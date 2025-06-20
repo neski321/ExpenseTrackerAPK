@@ -1,0 +1,97 @@
+package com.neski.pennypincher.ui.components
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+//import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material3.*
+import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+//import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import com.neski.pennypincher.data.models.Expense
+import java.text.SimpleDateFormat
+import java.util.*
+
+@Composable
+fun ExpenseRow(
+    expense: Expense,
+    categoryName: String,
+    paymentMethodName: String,
+    onEdit: () -> Unit = {},
+    onDelete: () -> Unit = {}
+) {
+    val dateFormatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(expense.date)
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.Top
+        ) {
+            Text(
+                text = dateFormatted,
+                modifier = Modifier.width(90.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Column(modifier = Modifier.weight(1f)) {
+                Text(text = expense.description, style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(4.dp))
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = categoryName,
+                        modifier = Modifier
+                            .background(
+                                MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
+                                RoundedCornerShape(12.dp)
+                            )
+                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall.copy(
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    if (expense.isSubscription) {
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "• Subscription",
+                            style = MaterialTheme.typography.labelSmall.copy(
+                                color = MaterialTheme.colorScheme.secondary
+                            )
+                        )
+                    }
+                }
+            }
+
+            Text(
+                text = paymentMethodName,
+                style = MaterialTheme.typography.bodySmall,
+                modifier = Modifier.padding(horizontal = 8.dp)
+            )
+
+            Text(
+                text = "$${"%.2f".format(expense.amount)}",
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.width(80.dp),
+                style = MaterialTheme.typography.bodyMedium
+            )
+
+            Row {
+                IconButton(onClick = onEdit) {
+                    Icon(Icons.Default.Edit, contentDescription = "Edit")
+                }
+            }
+        }
+
+        Divider(modifier = Modifier.padding(top = 8.dp))
+    }
+}

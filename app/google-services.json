@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1002190235055",
+    "project_id": "expensedb1",
+    "storage_bucket": "expensedb1.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002190235055:android:af890202debce127123b5a",
+        "android_client_info": {
+          "package_name": "com.neski.pennypincher"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyATh03nmh2PU5S8nn9J-QvUvHN03jix2mk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
