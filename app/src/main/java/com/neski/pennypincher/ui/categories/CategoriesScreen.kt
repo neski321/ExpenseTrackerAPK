@@ -1,49 +1,78 @@
 package com.neski.pennypincher.ui.categories
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ExpandLess
-import androidx.compose.material.icons.filled.ExpandMore
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import com.neski.pennypincher.data.models.Category
+import com.neski.pennypincher.ui.components.AddCategoryDialog
 import com.neski.pennypincher.data.repository.CategoryRepository
+import com.neski.pennypincher.ui.components.CategoryRow
+import com.neski.pennypincher.ui.components.EditCategoryDialog
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterial3Api::class)
+// Material 2 for swipe to dismiss only
+import androidx.compose.material.SwipeToDismiss
+import androidx.compose.material.DismissDirection
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.rememberDismissState
+
+
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun CategoriesScreen(userId: String) {
     val scope = rememberCoroutineScope()
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    var groupedCategories by remember { mutableStateOf<Map<String, List<Category>>>(emptyMap()) }
     var isLoading by remember { mutableStateOf(true) }
-    val expandedParents = remember { mutableStateMapOf<String, Boolean>() }
+    var showDialog by remember { mutableStateOf(false) }
+    var categoryToDelete by remember { mutableStateOf<Category?>(null) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
+    var page by remember { mutableStateOf(0) }
+    val pageSize = 20
+    val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var categoryToEdit by remember { mutableStateOf<Category?>(null) }
+    var categoryNameMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(userId) {
         scope.launch {
-            categories = CategoryRepository.getAllCategories(userId)
+            val fetched = CategoryRepository.getAllCategories(userId)
+            categories = fetched.sortedBy { it.name }
+            groupedCategories = fetched
+                .sortedBy { it.name }
+                .groupBy { parent ->
+                    fetched.find { it.id == parent.parentId }?.name ?: "Parent"
+                }
+            categoryNameMap = categories.associateBy({ it.id }, { it.name })
             isLoading = false
         }
     }
 
-    val parentCategories = categories.filter { it.parentId == null }
-    val grouped = parentCategories.map { parent ->
-        parent to categories.filter { it.parentId == parent.id }
+    fun deleteCategory(category: Category) {
+        scope.launch {
+            CategoryRepository.deleteCategory(userId, category.id)
+            val updated = categories.filterNot { it.id == category.id }
+            categories = updated
+            groupedCategories = updated
+                .sortedBy { it.name }
+                .groupBy { parent ->
+                    updated.find { it.id == parent.parentId }?.name ?: "Parent"
+                }
+        }
     }
 
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
-                onClick = { /* TODO: Open Add Category dialog */ },
-                containerColor = MaterialTheme.colorScheme.primary,
-                shape = CircleShape
+                onClick = { showDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Category")
             }
@@ -52,68 +81,144 @@ fun CategoriesScreen(userId: String) {
         Column(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(8.dp)
+                .padding(16.dp)
         ) {
-            Text("Manage Categories", style = MaterialTheme.typography.headlineSmall)
+            Text("Categories", style = MaterialTheme.typography.headlineSmall)
             Spacer(modifier = Modifier.height(16.dp))
 
             if (isLoading) {
-                CircularProgressIndicator()
-            } else if (categories.isEmpty()) {
-                Text("No categories found.")
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
             } else {
-                println("✅ Loaded ${categories.size} categories")
+                LazyColumn(
+                    modifier = Modifier.fillMaxSize(),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    groupedCategories
+                        .toSortedMap() // alphabetically by parent name
+                        .forEach { (parentName, children) ->
+                            item {
+                                Text(
+                                    text = parentName,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.padding(vertical = 4.dp)
+                                )
+                            }
 
-                grouped.forEach { (parent, children) ->
-                    val isExpanded = expandedParents[parent.id] ?: true
+                            items(children.sortedBy { it.name }, key = { it.id }) { category ->
+                                val dismissState = dismissStates.getOrPut(category.id) {
+                                    rememberDismissState()
+                                }
 
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { expandedParents[parent.id] = !isExpanded }
-                            .padding(vertical = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        CategoryIcon(name = parent.icon, color = parent.color)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = parent.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.weight(1f)
-                        )
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null
-                        )
-                    }
+                                LaunchedEffect(dismissState.currentValue) {
+                                    if (
+                                        dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                        dismissState.isDismissed(DismissDirection.StartToEnd)
+                                    ) {
+                                        categoryToDelete = category
+                                        showConfirmDialog = true
+                                    }
+                                }
 
-                    if (isExpanded) {
-                        children.forEach { child ->
-                            Card(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(start = 32.dp, bottom = 8.dp),
-                                colors = CardDefaults.cardColors(
-                                    containerColor = try {
-                                        Color(android.graphics.Color.parseColor(child.color))
-                                    } catch (e: Exception) {
-                                        MaterialTheme.colorScheme.surfaceVariant
+                                SwipeToDismiss(
+                                    state = dismissState,
+                                    directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                                    background = {},
+                                    dismissContent = {
+                                        CategoryRow(
+                                            category = category,
+                                            categoryNameMap = categoryNameMap,
+                                            onEdit = {
+                                                categoryToEdit = category
+                                                showEditDialog = true
+                                            }
+
+                                        )
                                     }
                                 )
-                            ) {
-                                Row(
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    modifier = Modifier.padding(12.dp)
-                                ) {
-                                    CategoryIcon(name = child.icon, color = child.color)
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(text = child.name)
-                                }
                             }
                         }
-                    }
                 }
             }
         }
+    }
+
+    if (showDialog) {
+        AddCategoryDialog(
+            userId = userId,
+            onDismiss = { showDialog = false },
+            categories = categories,
+            onAdded = {
+                showDialog = false
+            // Refresh after add
+            scope.launch {
+                val refreshed = CategoryRepository.getAllCategories(userId)
+                categories = refreshed.sortedBy { it.name }
+                groupedCategories = refreshed
+                    .sortedBy { it.name }
+                    .groupBy { parent ->
+                        refreshed.find { it.id == parent.parentId }?.name ?: "Parent"
+                    }
+                }
+            }
+        )
+    }
+
+    if (showEditDialog && categoryToEdit != null) {
+        EditCategoryDialog(
+            userId = userId,
+            category = categoryToEdit!!,
+            allCategories = categories,
+            onDismiss = {
+                showEditDialog = false
+                categoryToEdit = null
+            },
+            onUpdated = {
+                showEditDialog = false
+                categoryToEdit = null
+                scope.launch {
+                    val refreshed = CategoryRepository.getAllCategories(userId)
+                    categories = refreshed.sortedBy { it.name }
+                    groupedCategories = refreshed
+                        .sortedBy { it.name }
+                        .groupBy { parent ->
+                            refreshed.find { it.id == parent.parentId }?.name ?: "Uncategorized"
+                        }
+                }
+            }
+        )
+    }
+
+
+    if (showConfirmDialog && categoryToDelete != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showConfirmDialog = false
+                categoryToDelete = null
+            },
+            title = { Text("Delete Category") },
+            text = { Text("Are you sure you want to delete this category?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteCategory(categoryToDelete!!)
+                    showConfirmDialog = false
+                    categoryToDelete = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        dismissStates[categoryToDelete?.id]?.reset()
+                        showConfirmDialog = false
+                        categoryToDelete = null
+                    }
+                }) {
+                    Text("Cancel")
+                }
+            }
+        )
     }
 }

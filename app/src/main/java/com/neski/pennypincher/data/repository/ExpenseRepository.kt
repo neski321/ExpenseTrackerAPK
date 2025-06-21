@@ -1,7 +1,6 @@
 package com.neski.pennypincher.data.repository
 
 import com.google.firebase.firestore.FirebaseFirestore
-import com.google.firebase.firestore.QuerySnapshot
 import com.neski.pennypincher.data.models.Expense
 import kotlinx.coroutines.tasks.await
 import java.text.SimpleDateFormat

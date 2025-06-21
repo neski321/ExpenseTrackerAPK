@@ -25,5 +25,30 @@ object CategoryRepository {
         }
     }
 
+    suspend fun deleteCategory(userId: String, categoryId: String) {
+        val db = FirebaseFirestore.getInstance()
+        db.collection("users")
+            .document(userId)
+            .collection("categories")
+            .document(categoryId)
+            .delete()
+            .await()
+    }
+
+    suspend fun addCategory(userId: String, category: Category) {
+        val db = FirebaseFirestore.getInstance()
+        try {
+            db.collection("users")
+                .document(userId)
+                .collection("categories")
+                .document(category.id)
+                .set(category)
+                .await()
+        } catch (e: Exception) {
+            // Optional: log or throw
+            throw e
+        }
+    }
+
 }
 
