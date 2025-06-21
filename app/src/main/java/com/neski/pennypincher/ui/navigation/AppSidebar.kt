@@ -7,11 +7,10 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.graphics.Color
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
-import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.filled.CreditCard
+import androidx.compose.material.icons.filled.Search
 
 
 @Composable
@@ -27,6 +26,7 @@ fun AppSidebar(
     val items = listOf(
         SidebarItem("Dashboard", "dashboard", Icons.Default.Home),
         SidebarItem("Expenses", "expenses", Icons.Default.AttachMoney),
+        SidebarItem("Search Expenses", "search", Icons.Default.Search),
         SidebarItem("Income", "income", Icons.Default.TrendingUp),
         SidebarItem("Categories", "categories", Icons.Default.Category),
         SidebarItem("Payment Methods", "paymentMethods", Icons.Default.CreditCard),
