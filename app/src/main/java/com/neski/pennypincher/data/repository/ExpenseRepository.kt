@@ -102,12 +102,25 @@ object ExpenseRepository {
         }
     }
 
-    fun addExpense(expense: Expense) {
+    fun addExpense(userId: String, expense: Expense) {
         val db = FirebaseFirestore.getInstance()
-        db.collection("expenses")
+        db.collection("users")
+            .document(userId)
+            .collection("expenses")
             .document(expense.id)
             .set(expense)
     }
+
+    fun updateExpense(userId: String, expense: Expense) {
+        FirebaseFirestore.getInstance()
+            .collection("users")
+            .document(userId)
+            .collection("expenses")
+            .document(expense.id)
+            .set(expense)
+    }
+
+
 
 
 }

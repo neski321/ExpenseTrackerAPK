@@ -10,6 +10,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Snackbar
+import androidx.compose.material3.SnackbarData
+
 //import androidx.compose.material.icons.filled.Delete
 //import androidx.compose.ui.graphics.Color
 //import androidx.compose.ui.unit.dp
@@ -31,6 +36,7 @@ import androidx.compose.material.DismissDirection
 //import androidx.compose.material.DismissValue
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberDismissState
+import com.neski.pennypincher.ui.components.EditExpenseDialog
 import java.util.Date
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class)
@@ -47,6 +53,11 @@ fun ExpensesScreen(userId: String) {
     var paymentMethods by remember { mutableStateOf<List<PaymentMethod>>(emptyList()) }
     val paymentMethodMap = paymentMethods.associateBy({ it.id }, { it.name })
     val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
+    var showEditDialog by remember { mutableStateOf(false) }
+    var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
+    var expenseBeingEdited by remember { mutableStateOf<Expense?>(null) }
+    val snackbarHostState = remember { SnackbarHostState() }
+
 
     var page by remember { mutableStateOf(0) }
     val pageSize = 20
@@ -72,6 +83,7 @@ fun ExpensesScreen(userId: String) {
     }
 
     Scaffold(
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showDialog = true },
@@ -127,7 +139,10 @@ fun ExpensesScreen(userId: String) {
                                     expense = expense,
                                     categoryName = categoryName,
                                     paymentMethodName = paymentMethodName,
-                                    onEdit = { /* TODO */ },
+                                    onEdit = {
+                                        expenseToEdit = expense
+                                        showEditDialog = true
+                                    },
                                     onDelete = { deleteExpense(expense) }
                                 )
                             }
@@ -210,12 +225,48 @@ fun ExpensesScreen(userId: String) {
                     nextDueDate = nextDue ?: Date() // ✅ add this
                 )
                 scope.launch {
-                    ExpenseRepository.addExpense(newExpense)
+                    ExpenseRepository.addExpense(userId, newExpense)
                     expenses = ExpenseRepository.getAllExpenses(userId)
+                    snackbarHostState.showSnackbar("Expense added successfully")
                 }
                 showDialog = false
             }
         )
     }
 
+    expenseBeingEdited?.let { expense ->
+        EditExpenseDialog(
+            userId = userId,
+            expense = expense,
+            onDismiss = { expenseBeingEdited = null },
+            onUpdate = { updatedExpense ->
+                scope.launch {
+                    ExpenseRepository.updateExpense(userId, updatedExpense)
+                    expenses = ExpenseRepository.getAllExpenses(userId)
+                    expenseBeingEdited = null
+                    snackbarHostState.showSnackbar("Expense updated successfully")
+                }
+            }
+        )
+    }
+
+    if (showEditDialog && expenseToEdit != null) {
+        EditExpenseDialog(
+            userId = userId,
+            expense = expenseToEdit!!,
+            onDismiss = {
+                showEditDialog = false
+                expenseToEdit = null
+            },
+            onUpdate = { updatedExpense ->
+                scope.launch {
+                    ExpenseRepository.addExpense(userId, updatedExpense)
+                    expenses = ExpenseRepository.getExpensesByPage(userId, 20, 0)
+                    showEditDialog = false
+                    expenseToEdit = null
+                    snackbarHostState.showSnackbar("Expense updated successfully")
+                }
+            }
+        )
+    }
 }
