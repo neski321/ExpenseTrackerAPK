@@ -20,9 +20,10 @@ import java.util.*
 import com.neski.pennypincher.data.models.Expense
 import com.neski.pennypincher.data.models.Category
 import com.neski.pennypincher.data.models.PaymentMethod
+import com.neski.pennypincher.data.models.Currency
 import com.neski.pennypincher.data.repository.CategoryRepository
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
-
+import com.neski.pennypincher.data.repository.CurrencyRepository
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -46,9 +47,11 @@ fun EditExpenseDialog(
 
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var paymentMethods by remember { mutableStateOf<List<PaymentMethod>>(emptyList()) }
+    var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
 
     var categoryExpanded by remember { mutableStateOf(false) }
     var paymentExpanded by remember { mutableStateOf(false) }
+    var currencyExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showNextDueDatePicker by remember { mutableStateOf(false) }
 
@@ -60,6 +63,7 @@ fun EditExpenseDialog(
         coroutineScope.launch {
             categories = CategoryRepository.getAllCategories(userId)
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
+            currencies = CurrencyRepository.getAllCurrencies(userId, forceRefresh = false)
         }
     }
 
@@ -95,6 +99,9 @@ fun EditExpenseDialog(
 
     val selectedCategoryName = categories.find { it.id == category }?.name ?: "Select Category"
     val selectedPaymentMethodName = paymentMethods.find { it.id == paymentMethod }?.name ?: "Select Payment Method"
+    val selectedCurrency = currencies.find { it.id == currency }?.let {
+        if (it.symbol.isNotBlank()) "${it.code} (${it.symbol})" else it.code
+    } ?: "Select Currency"
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -114,7 +121,7 @@ fun EditExpenseDialog(
                         )
                     )
                 },
-                enabled = description.isNotBlank() && amount.isNotBlank() && category.isNotBlank()
+                enabled = description.isNotBlank() && amount.isNotBlank() && category.isNotBlank() && currency.isNotBlank()
             ) {
                 Text("Update Expense")
             }
@@ -147,12 +154,53 @@ fun EditExpenseDialog(
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
-                    OutlinedTextField(
-                        value = currency,
-                        onValueChange = { currency = it },
-                        label = { Text("Currency") },
+
+                    // Currency Dropdown
+                    ExposedDropdownMenuBox(
+                        expanded = currencyExpanded,
+                        onExpandedChange = { currencyExpanded = !currencyExpanded },
                         modifier = Modifier.weight(1f)
-                    )
+                    ) {
+                        OutlinedTextField(
+                            readOnly = true,
+                            value = selectedCurrency,
+                            onValueChange = {},
+                            label = { Text("Currency") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded)
+                            },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = currencyExpanded,
+                            onDismissRequest = { currencyExpanded = false }
+                        ) {
+                            if (currencies.isEmpty()) {
+                                DropdownMenuItem(
+                                    text = { Text("No currencies available") },
+                                    onClick = { currencyExpanded = false }
+                                )
+                            }else {
+                                currencies.sortedBy { it.code }.forEach { curr ->
+                                    DropdownMenuItem(
+                                        text = {
+                                            Text(
+                                                if (curr.symbol.isNotBlank())
+                                                    "${curr.code} (${curr.symbol}) - ${curr.name}"
+                                                else
+                                                    "${curr.code} - ${curr.name}"
+                                            )
+                                        },
+                                        onClick = {
+                                            currency = curr.id
+                                            currencyExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
 
                 OutlinedTextField(
@@ -168,7 +216,7 @@ fun EditExpenseDialog(
                         .clickable { showDatePicker = true }
                 )
 
-                // Grouped Category Dropdown
+                // Category Dropdown
                 ExposedDropdownMenuBox(
                     expanded = categoryExpanded,
                     onExpandedChange = { categoryExpanded = !categoryExpanded }

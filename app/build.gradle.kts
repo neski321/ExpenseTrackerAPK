@@ -71,6 +71,9 @@ dependencies {
 
     implementation(libs.androidx.material)
 
+    implementation(libs.accompanist.swiperefresh)
+
+
 
 
 

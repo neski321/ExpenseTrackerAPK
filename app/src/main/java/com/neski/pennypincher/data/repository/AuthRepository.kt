@@ -1,5 +1,6 @@
 package com.neski.pennypincher.data.repository
 
+import com.google.firebase.auth.EmailAuthProvider
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.tasks.await
@@ -27,6 +28,28 @@ object AuthRepository {
             Result.failure(e)
         }
     }
+
+    suspend fun reauthenticateUser(currentEmail: String, password: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: return Result.failure(Exception("No logged-in user"))
+            val credential = EmailAuthProvider.getCredential(currentEmail, password)
+            user.reauthenticate(credential).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateEmailAddress(newEmail: String): Result<Unit> {
+        return try {
+            val user = auth.currentUser ?: return Result.failure(Exception("No logged-in user"))
+            user.updateEmail(newEmail).await()
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
 
     fun signOut() {
         auth.signOut()
