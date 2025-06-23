@@ -14,9 +14,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.neski.pennypincher.data.models.Category
+import com.neski.pennypincher.data.models.Currency
 import com.neski.pennypincher.data.models.PaymentMethod
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
 import com.neski.pennypincher.data.repository.CategoryRepository
+import com.neski.pennypincher.data.repository.CurrencyRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
@@ -67,11 +69,23 @@ fun AddExpenseDialog(
     var paymentExpanded by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
 
+    var currencyExpanded by remember { mutableStateOf(false) }
+
+    var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
+    val currencyMap = currencies.associateBy { it.id }
+    val selectedCurrencyLabel = currencyMap[currency]?.let { "${it.symbol} ${it.code}" } ?: "Select Currency"
+
+
+
+
+
     // Load categories
     LaunchedEffect(userId) {
         coroutineScope.launch {
             categories = CategoryRepository.getAllCategories(userId)
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
+            currencies = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true)
+
         }
     }
 
@@ -172,12 +186,38 @@ fun AddExpenseDialog(
                         modifier = Modifier.weight(1f),
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
                     )
-                    OutlinedTextField(
-                        value = currency,
-                        onValueChange = { currency = it },
-                        label = { Text("Currency") },
-                        modifier = Modifier.weight(1f)
-                    )
+
+                    ExposedDropdownMenuBox(
+                        expanded = currencyExpanded,
+                        onExpandedChange = { currencyExpanded = !currencyExpanded }
+                    ) {
+                        OutlinedTextField(
+                            readOnly = true,
+                            value = selectedCurrencyLabel,
+                            onValueChange = {},
+                            label = { Text("Currency") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded)
+                            },
+                            modifier = Modifier.menuAnchor().weight(1f)
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = currencyExpanded,
+                            onDismissRequest = { currencyExpanded = false }
+                        ) {
+                            currencies.sortedBy { it.code }.forEach { item ->
+                                DropdownMenuItem(
+                                    text = { Text("${item.symbol} ${item.code}") },
+                                    onClick = {
+                                        currency = item.id
+                                        currencyExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
                 }
 
                 OutlinedTextField(

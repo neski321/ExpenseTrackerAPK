@@ -18,22 +18,31 @@ import com.neski.pennypincher.data.models.Expense
 import com.neski.pennypincher.data.models.PaymentMethod
 import com.neski.pennypincher.data.repository.CategoryRepository
 import com.neski.pennypincher.data.repository.ExpenseRepository
-import com.neski.pennypincher.ui.components.ExpenseCard
+import com.neski.pennypincher.ui.components.EditExpenseDialog
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
 import kotlinx.coroutines.launch
+
+// Material 2 for swipe to dismiss only
+import androidx.compose.material.SwipeToDismiss
+import androidx.compose.material.DismissDirection
+import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.rememberDismissState
+import com.neski.pennypincher.ui.components.ExpenseRow
 
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 
 @RequiresApi(Build.VERSION_CODES.O)
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun SearchExpensesScreen(userId: String) {
     val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
 
     var allExpenses by remember { mutableStateOf<List<Expense>>(emptyList()) }
+
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     var selectedCategory by remember { mutableStateOf<String?>(null) }
     var categoryExpanded by remember { mutableStateOf(false) }
@@ -53,9 +62,18 @@ fun SearchExpensesScreen(userId: String) {
     var showStartPicker by remember { mutableStateOf(false) }
     var showEndPicker by remember { mutableStateOf(false) }
 
-    val dateFormatter = remember { java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy") }
-
     var allCategories by remember { mutableStateOf<List<Category>>(emptyList()) }
+    val categoryMap = allCategories.associateBy({ it.id }, { it.name })
+    val paymentMethodMap = allPaymentMethods.associateBy({ it.id }, { it.name })
+
+    var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
+    val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
+
+
+    val dateFormatter = remember { java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy") }
 
     var query by remember { mutableStateOf("") }
 
@@ -91,6 +109,13 @@ fun SearchExpensesScreen(userId: String) {
         }.getOrDefault(true)
 
         matchesText && matchesCat && matchesPay && matchesAmount && matchesDate
+    }
+
+    fun deleteExpense(expense: Expense) {
+        scope.launch {
+            // 🔥 Replace with actual Firestore delete if needed
+            allExpenses = allExpenses.filterNot { it.id == expense.id }
+        }
     }
 
     Scaffold(
@@ -330,10 +355,93 @@ fun SearchExpensesScreen(userId: String) {
             Spacer(Modifier.height(16.dp))
 
             LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                items(filteredExpenses) { expense ->
-                    ExpenseCard(expense = expense)
+                items(filteredExpenses, key = { it.id }) { expense ->
+                    val dismissState = dismissStates.getOrPut(expense.id) {
+                        rememberDismissState()
+                    }
+                    val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
+                    val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
+
+                    LaunchedEffect(dismissState.currentValue) {
+                        if (
+                            dismissState.isDismissed(DismissDirection.EndToStart) ||
+                            dismissState.isDismissed(DismissDirection.StartToEnd)
+                        ) {
+                            expenseToDelete = expense
+                            showConfirmDialog = true
+                        }
+                    }
+
+                    SwipeToDismiss(
+                        state = dismissState,
+                        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                        background = {},
+                        dismissContent = {
+                            ExpenseRow(
+                                expense = expense,
+                                categoryName = categoryName,
+                                paymentMethodName = paymentMethodName,
+                                onEdit = {
+                                    expenseToEdit = expense
+                                    showEditDialog = true
+                                },
+                                onDelete = { deleteExpense(expense) }
+                            )
+                        }
+                    )
                 }
+
             }
         }
+    }
+
+    if (showConfirmDialog && expenseToDelete != null) {
+        AlertDialog(
+            onDismissRequest = {
+                showConfirmDialog = false
+                expenseToDelete = null
+            },
+            title = { Text("Delete Expense") },
+            text = { Text("Are you sure you want to delete this expense?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    deleteExpense(expenseToDelete!!)
+                    showConfirmDialog = false
+                    expenseToDelete = null
+                }) {
+                    Text("Delete", color = MaterialTheme.colorScheme.error)
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        dismissStates[expenseToDelete?.id]?.reset()
+                        showConfirmDialog = false
+                        expenseToDelete = null
+                    }
+                }) {
+                    Text("Cancel")
+                }
+            }
+
+        )
+    }
+
+    if (showEditDialog && expenseToEdit != null) {
+        EditExpenseDialog(
+            userId = userId,
+            expense = expenseToEdit!!,
+            onDismiss = {
+                showEditDialog = false
+                expenseToEdit = null
+            },
+            onUpdate = {
+                showEditDialog = false
+                expenseToEdit = null
+                scope.launch {
+                    allExpenses = ExpenseRepository.getAllExpenses(userId)
+                }
+            }
+        )
     }
 }

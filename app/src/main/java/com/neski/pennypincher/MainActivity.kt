@@ -22,7 +22,9 @@ import com.neski.pennypincher.data.repository.AuthRepository
 import com.neski.pennypincher.ui.categories.CategoriesScreen
 import com.neski.pennypincher.ui.expenses.SearchExpensesScreen
 import com.google.firebase.auth.FirebaseAuth
+import com.neski.pennypincher.ui.income.IncomeScreen
 import com.neski.pennypincher.ui.payment.PaymentMethodsScreen
+import com.neski.pennypincher.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -92,13 +94,12 @@ class MainActivity : ComponentActivity() {
                                     when (selectedRoute) {
                                         "dashboard" -> DashboardScreen(userId = userId, onNavigateToExpenses = { selectedRoute = "expenses" })
                                         "expenses" -> ExpensesScreen(userId = userId)
+                                        "income" -> IncomeScreen(userId = userId)
                                         "categories" -> CategoriesScreen(userId = userId)
                                         "paymentMethods" -> PaymentMethodsScreen(userId = userId)
                                         "search" -> SearchExpensesScreen(userId = userId)
+                                        "settings" -> SettingsScreen(userId = userId)
 
-
-
-                                        // Add other screens like "income", "settings", etc. as needed
                                     }
                                 }
                             }

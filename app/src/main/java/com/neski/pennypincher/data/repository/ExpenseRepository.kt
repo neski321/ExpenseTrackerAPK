@@ -8,8 +8,14 @@ import java.util.*
 
 object ExpenseRepository {
     private val db = FirebaseFirestore.getInstance()
+    private var cachedExpenses: List<Expense>? = null
+    private var cachedExpensesUserId: String? = null
 
-    suspend fun getAllExpenses(userId: String): List<Expense> {
+    suspend fun getAllExpenses(userId: String, forceRefresh: Boolean = false): List<Expense> {
+        if (!forceRefresh && cachedExpenses != null && cachedExpensesUserId == userId) {
+            return cachedExpenses!!
+        }
+
         return try {
             val snapshot = db.collection("users")
                 .document(userId)
@@ -17,13 +23,21 @@ object ExpenseRepository {
                 .get()
                 .await()
 
-            snapshot.documents.mapNotNull {
+            val list = snapshot.documents.mapNotNull {
                 it.toObject(Expense::class.java)?.copy(id = it.id)
             }.sortedByDescending { it.date }
+
+            cachedExpenses = list
+            cachedExpensesUserId = userId
+            list
         } catch (e: Exception) {
-            //println("Error fetching expenses: ${e.message}")
             emptyList()
         }
+    }
+
+    suspend fun getTotalExpenses(userId: String, forceRefresh: Boolean = false): Double {
+        val expenses = getAllExpenses(userId, forceRefresh)
+        return expenses.sumOf { it.amount }
     }
 
     suspend fun getThisMonthTotal(userId: String): Double {
