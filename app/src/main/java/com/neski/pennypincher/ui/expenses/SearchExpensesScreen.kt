@@ -72,6 +72,7 @@ fun SearchExpensesScreen(userId: String) {
     var expenseToDelete by remember { mutableStateOf<Expense?>(null) }
     val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
 
+    val snackbarHostState = remember { SnackbarHostState() }
 
     val dateFormatter = remember { java.time.format.DateTimeFormatter.ofPattern("MMM dd, yyyy") }
 
@@ -113,8 +114,13 @@ fun SearchExpensesScreen(userId: String) {
 
     fun deleteExpense(expense: Expense) {
         scope.launch {
-            // 🔥 Replace with actual Firestore delete if needed
-            allExpenses = allExpenses.filterNot { it.id == expense.id }
+            try {
+                ExpenseRepository.deleteExpense(userId, expense.id)
+                allExpenses = allExpenses.filterNot { it.id == expense.id }
+                snackbarHostState.showSnackbar("Expense deleted")
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("Failed to delete expense")
+            }
         }
     }
 

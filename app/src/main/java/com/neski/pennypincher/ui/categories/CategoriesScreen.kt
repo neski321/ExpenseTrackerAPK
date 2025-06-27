@@ -22,6 +22,9 @@ import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberDismissState
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
 
 @OptIn(ExperimentalMaterialApi::class)
@@ -31,6 +34,7 @@ fun CategoriesScreen(userId: String) {
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var groupedCategories by remember { mutableStateOf<Map<String, List<Category>>>(emptyMap()) }
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
     var showDialog by remember { mutableStateOf(false) }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
@@ -40,6 +44,24 @@ fun CategoriesScreen(userId: String) {
     var showEditDialog by remember { mutableStateOf(false) }
     var categoryToEdit by remember { mutableStateOf<Category?>(null) }
     var categoryNameMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                val fetched = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                categories = fetched.sortedBy { it.name }
+                groupedCategories = fetched
+                    .sortedBy { it.name }
+                    .groupBy { parent ->
+                        fetched.find { it.id == parent.parentId }?.name ?: "Parent"
+                    }
+                categoryNameMap = categories.associateBy({ it.id }, { it.name })
+                isRefreshing = false
+            }
+        }
+    )
 
     LaunchedEffect(userId) {
         scope.launch {
@@ -78,69 +100,83 @@ fun CategoriesScreen(userId: String) {
             }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp)
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
-            Text("Categories", style = MaterialTheme.typography.headlineSmall)
-            Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Text("Categories", style = MaterialTheme.typography.headlineSmall)
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize(),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    groupedCategories
-                        .toSortedMap() // alphabetically by parent name
-                        .forEach { (parentName, children) ->
-                            item {
-                                Text(
-                                    text = parentName,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.padding(vertical = 4.dp)
-                                )
-                            }
-
-                            items(children.sortedBy { it.name }, key = { it.id }) { category ->
-                                val dismissState = dismissStates.getOrPut(category.id) {
-                                    rememberDismissState()
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        groupedCategories
+                            .toSortedMap() // alphabetically by parent name
+                            .forEach { (parentName, children) ->
+                                item {
+                                    Text(
+                                        text = parentName,
+                                        style = MaterialTheme.typography.titleMedium,
+                                        modifier = Modifier.padding(vertical = 4.dp)
+                                    )
                                 }
 
-                                LaunchedEffect(dismissState.currentValue) {
-                                    if (
-                                        dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                        dismissState.isDismissed(DismissDirection.StartToEnd)
-                                    ) {
-                                        categoryToDelete = category
-                                        showConfirmDialog = true
+                                items(children.sortedBy { it.name }, key = { it.id }) { category ->
+                                    val dismissState = dismissStates.getOrPut(category.id) {
+                                        rememberDismissState()
                                     }
+
+                                    LaunchedEffect(dismissState.currentValue) {
+                                        if (
+                                            dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                            dismissState.isDismissed(DismissDirection.StartToEnd)
+                                        ) {
+                                            categoryToDelete = category
+                                            showConfirmDialog = true
+                                        }
+                                    }
+
+                                    SwipeToDismiss(
+                                        state = dismissState,
+                                        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                                        background = {},
+                                        dismissContent = {
+                                            CategoryRow(
+                                                category = category,
+                                                categoryNameMap = categoryNameMap,
+                                                onEdit = {
+                                                    categoryToEdit = category
+                                                    showEditDialog = true
+                                                }
+
+                                            )
+                                        }
+                                    )
                                 }
-
-                                SwipeToDismiss(
-                                    state = dismissState,
-                                    directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-                                    background = {},
-                                    dismissContent = {
-                                        CategoryRow(
-                                            category = category,
-                                            categoryNameMap = categoryNameMap,
-                                            onEdit = {
-                                                categoryToEdit = category
-                                                showEditDialog = true
-                                            }
-
-                                        )
-                                    }
-                                )
                             }
-                        }
+                    }
                 }
             }
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                scale = true,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
 

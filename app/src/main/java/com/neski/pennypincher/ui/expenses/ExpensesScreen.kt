@@ -4,16 +4,19 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+//import androidx.compose.foundation.rememberScrollState
+//import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Snackbar
-import androidx.compose.material3.SnackbarData
+//import androidx.compose.material3.Snackbar
+//import androidx.compose.material3.SnackbarData
 
 //import androidx.compose.material.icons.filled.Delete
 //import androidx.compose.ui.graphics.Color
@@ -38,10 +41,15 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
 import java.util.Date
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
-fun ExpensesScreen(userId: String) {
+fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     var expenses by remember { mutableStateOf<List<Expense>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -58,10 +66,26 @@ fun ExpensesScreen(userId: String) {
     var expenseBeingEdited by remember { mutableStateOf<Expense?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-
     var page by remember { mutableStateOf(0) }
     val pageSize = 20
     var isLoadingMore by remember { mutableStateOf(false) }
+    var isRefreshing by remember { mutableStateOf(false) }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                categories = CategoryRepository.getAllCategories(userId)
+                expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
+                paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
+                val pageOne = ExpenseRepository.getExpensesByPage(userId, pageSize, 0)
+                expenses = pageOne
+                page = 0
+                isRefreshing = false
+            }
+        }
+    )
 
     LaunchedEffect(userId) {
         scope.launch {
@@ -75,14 +99,44 @@ fun ExpensesScreen(userId: String) {
         }
     }
 
+    val filteredExpenses = if (filterMonth != null) {
+        expenses.filter { expense ->
+            val month = java.text.SimpleDateFormat("MMM").format(expense.date)
+            month == filterMonth
+        }
+    } else {
+        expenses
+    }
+
     fun deleteExpense(expense: Expense) {
         scope.launch {
-            // 🔥 Replace with actual Firestore delete if needed
-            expenses = expenses.filterNot { it.id == expense.id }
+            try {
+                ExpenseRepository.deleteExpense(userId, expense.id)
+                expenses = expenses.filterNot { it.id == expense.id }
+                snackbarHostState.showSnackbar("Expense deleted")
+            } catch (e: Exception) {
+                snackbarHostState.showSnackbar("Failed to delete expense")
+            }
         }
     }
 
     Scaffold(
+        topBar = {
+            if (filterMonth != null && onBack != null) {
+                TopAppBar(
+                    title = { Text("Expenses for $filterMonth") },
+                    navigationIcon = {
+                        IconButton(onClick = onBack) {
+                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                        }
+                    }
+                )
+            } else {
+                TopAppBar(
+                    title = { Text("Manage Expenses") }
+                )
+            }
+        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
@@ -93,87 +147,103 @@ fun ExpensesScreen(userId: String) {
             }
         }
     ) { innerPadding ->
-        Column(
+        Box(
             modifier = Modifier
                 .padding(innerPadding)
                 .padding(16.dp)
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
         ) {
-            Text(
-                text = "Manage Expenses",
-                style = MaterialTheme.typography.headlineSmall
-            )
-            Spacer(modifier = Modifier.height(16.dp))
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Text(
+                    text = "Manage Expenses",
+                    style = MaterialTheme.typography.headlineSmall
+                )
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
-                }
-            } else if (expenses.isEmpty()) {
-                Text("No expenses found.")
-            } else {
-                LazyColumn(
-                    modifier = Modifier.fillMaxSize().padding(bottom = 80.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    items(expenses, key = { it.id }) { expense ->
-                        val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
-                        val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
-                        val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (filteredExpenses.isEmpty()) {
+                    Text("No expenses found.")
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        items(filteredExpenses, key = { it.id }) { expense ->
+                            val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
+                            val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
+                            val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
 
-                        LaunchedEffect(dismissState.currentValue) {
-                            if (
-                                dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                dismissState.isDismissed(DismissDirection.StartToEnd)
-                            ) {
-                                expenseToDelete = expense
-                                showConfirmDialog = true
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (
+                                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                    dismissState.isDismissed(DismissDirection.StartToEnd)
+                                ) {
+                                    expenseToDelete = expense
+                                    showConfirmDialog = true
+                                }
                             }
+
+                            SwipeToDismiss(
+                                state = dismissState,
+                                directions = setOf(DismissDirection.EndToStart),
+                                background = {},
+                                dismissContent = {
+                                    ExpenseRow(
+                                        expense = expense,
+                                        categoryName = categoryName,
+                                        paymentMethodName = paymentMethodName,
+                                        onEdit = {
+                                            expenseToEdit = expense
+                                            showEditDialog = true
+                                        },
+                                        onDelete = { deleteExpense(expense) }
+                                    )
+                                }
+                            )
+                            Spacer(modifier = Modifier.height(4.dp))
                         }
 
-                        SwipeToDismiss(
-                            state = dismissState,
-                            directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-                            background = {},
-                            dismissContent = {
-                                ExpenseRow(
-                                    expense = expense,
-                                    categoryName = categoryName,
-                                    paymentMethodName = paymentMethodName,
-                                    onEdit = {
-                                        expenseToEdit = expense
-                                        showEditDialog = true
-                                    },
-                                    onDelete = { deleteExpense(expense) }
-                                )
-                            }
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                    }
-
-                    item {
-                        if (!isLoadingMore) {
-                            Button(
-                                onClick = {
-                                    scope.launch {
-                                        isLoadingMore = true
-                                        val nextPage = ExpenseRepository.getExpensesByPage(userId, pageSize, page + 1)
-                                        if (nextPage.isNotEmpty()) {
-                                            expenses = expenses + nextPage
-                                            page += 1
+                        item {
+                            if (!isLoadingMore) {
+                                Button(
+                                    onClick = {
+                                        scope.launch {
+                                            isLoadingMore = true
+                                            val nextPage = ExpenseRepository.getExpensesByPage(userId, pageSize, page + 1)
+                                            if (nextPage.isNotEmpty()) {
+                                                expenses = expenses + nextPage
+                                                page += 1
+                                            }
+                                            isLoadingMore = false
                                         }
-                                        isLoadingMore = false
-                                    }
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 16.dp)
-                            ) {
-                                Text("Load More")
+                                    },
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(vertical = 16.dp)
+                                ) {
+                                    Text("Load More")
+                                }
                             }
                         }
                     }
                 }
             }
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                scale = true,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
     }
     if (showConfirmDialog && expenseToDelete != null) {

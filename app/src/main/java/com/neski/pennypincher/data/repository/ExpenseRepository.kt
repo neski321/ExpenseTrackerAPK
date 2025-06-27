@@ -40,19 +40,19 @@ object ExpenseRepository {
         return expenses.sumOf { it.amount }
     }
 
-    suspend fun getThisMonthTotal(userId: String): Double {
+    suspend fun getThisMonthTotal(userId: String, forceRefresh: Boolean = false): Double {
         val now = Calendar.getInstance()
         val thisMonth = now.get(Calendar.MONTH)
         val thisYear = now.get(Calendar.YEAR)
 
-        val all = getAllExpenses(userId)
+        val all = getAllExpenses(userId, forceRefresh)
         return all.filter {
             val cal = Calendar.getInstance().apply { time = it.date }
             cal.get(Calendar.MONTH) == thisMonth && cal.get(Calendar.YEAR) == thisYear
         }.sumOf { it.amount }
     }
 
-    suspend fun getThisWeekCount(userId: String): Int {
+    suspend fun getThisWeekCount(userId: String, forceRefresh: Boolean = false): Int {
         val now = Calendar.getInstance()
 
         val startOfWeek = now.clone() as Calendar
@@ -71,15 +71,15 @@ object ExpenseRepository {
         endOfWeek.set(Calendar.SECOND, 59)
         endOfWeek.set(Calendar.MILLISECOND, 999)
 
-        val all = getAllExpenses(userId)
+        val all = getAllExpenses(userId, forceRefresh)
 
         return all.count {
             it.date.after(startOfWeek.time) && it.date.before(endOfWeek.time)
         }
     }
 
-    suspend fun getMonthlySpending(userId: String): Map<String, Double> {
-        val all = getAllExpenses(userId)
+    suspend fun getMonthlySpending(userId: String, forceRefresh: Boolean = false): Map<String, Double> {
+        val all = getAllExpenses(userId, forceRefresh)
 
         val format = SimpleDateFormat("MMM yyyy", Locale.getDefault())
         val calendar = Calendar.getInstance()
@@ -133,7 +133,20 @@ object ExpenseRepository {
             .set(expense)
     }
 
-
-
-
+    suspend fun deleteExpense(userId: String, expenseId: String) {
+        try {
+            db.collection("users")
+                .document(userId)
+                .collection("expenses")
+                .document(expenseId)
+                .delete()
+                .await()
+            // Invalidate cache if needed
+            if (cachedExpenses != null && cachedExpensesUserId == userId) {
+                cachedExpenses = cachedExpenses?.filterNot { it.id == expenseId }
+            }
+        } catch (e: Exception) {
+            // Handle error if needed
+        }
+    }
 }

@@ -91,15 +91,28 @@ class MainActivity : ComponentActivity() {
                                 }
                             ) { innerPadding ->
                                 Box(modifier = Modifier.padding(innerPadding)) {
-                                    when (selectedRoute) {
-                                        "dashboard" -> DashboardScreen(userId = userId, onNavigateToExpenses = { selectedRoute = "expenses" })
-                                        "expenses" -> ExpensesScreen(userId = userId)
-                                        "income" -> IncomeScreen(userId = userId)
-                                        "categories" -> CategoriesScreen(userId = userId)
-                                        "paymentMethods" -> PaymentMethodsScreen(userId = userId)
-                                        "search" -> SearchExpensesScreen(userId = userId)
-                                        "settings" -> SettingsScreen(userId = userId)
-
+                                    when {
+                                        selectedRoute == "dashboard" -> DashboardScreen(
+                                            userId = userId,
+                                            onNavigateToExpenses = { selectedRoute = "expenses" },
+                                            onNavigateToExpensesByMonth = { month ->
+                                                selectedRoute = "expensesByMonth:$month"
+                                            }
+                                        )
+                                        selectedRoute == "expenses" -> ExpensesScreen(userId = userId)
+                                        selectedRoute.startsWith("expensesByMonth:") -> {
+                                            val month = selectedRoute.removePrefix("expensesByMonth:")
+                                            ExpensesScreen(
+                                                userId = userId,
+                                                filterMonth = month,
+                                                onBack = { selectedRoute = "dashboard" }
+                                            )
+                                        }
+                                        selectedRoute == "income" -> IncomeScreen(userId = userId)
+                                        selectedRoute == "categories" -> CategoriesScreen(userId = userId)
+                                        selectedRoute == "paymentMethods" -> PaymentMethodsScreen(userId = userId)
+                                        selectedRoute == "search" -> SearchExpensesScreen(userId = userId)
+                                        selectedRoute == "settings" -> SettingsScreen(userId = userId)
                                     }
                                 }
                             }

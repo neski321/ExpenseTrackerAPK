@@ -30,6 +30,9 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberDismissState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
+import androidx.compose.material.pullrefresh.PullRefreshIndicator
+import androidx.compose.material.pullrefresh.pullRefresh
+import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -42,12 +45,25 @@ fun IncomeScreen(userId: String) {
     var showAddDialog by remember { mutableStateOf(false) }
     var editingIncome by remember { mutableStateOf<Income?>(null) }
     var isLoading by remember { mutableStateOf(true) }
+    var isRefreshing by remember { mutableStateOf(false) }
 
     var incomeToDelete by remember { mutableStateOf<Income?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
 
 
     var currencyMap by remember { mutableStateOf<Map<String, Currency>>(emptyMap()) }
+
+    val pullRefreshState = rememberPullRefreshState(
+        refreshing = isRefreshing,
+        onRefresh = {
+            scope.launch {
+                isRefreshing = true
+                incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
+                isRefreshing = false
+            }
+        }
+    )
 
     fun loadData() {
         scope.launch {
@@ -71,65 +87,78 @@ fun IncomeScreen(userId: String) {
         },
         snackbarHost = { SnackbarHost(snackbarHostState) }
     ) { innerPadding ->
-        Column(modifier = Modifier
-            .padding(innerPadding)
-            .padding(16.dp)) {
-
-            if (isLoading) {
-                CircularProgressIndicator()
-            } else if (incomes.isEmpty()) {
-                Text("No income records found.")
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(incomes, key = { it.id }) { income ->
-                        val dismissState = rememberDismissState(
-                            confirmStateChange = {
-                                if (it == DismissValue.DismissedToStart) {
-                                    incomeToDelete = income
-                                    showConfirmDialog = true
-                                    false // Don’t auto-dismiss
-                                } else {
-                                    false
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+                .fillMaxSize()
+                .pullRefresh(pullRefreshState)
+        ) {
+            Column(modifier = Modifier.fillMaxSize()) {
+                if (isLoading) {
+                    CircularProgressIndicator()
+                } else if (incomes.isEmpty()) {
+                    Text("No income records found.")
+                } else {
+                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        items(incomes, key = { it.id }) { income ->
+                            val dismissState = rememberDismissState(
+                                confirmStateChange = {
+                                    if (it == DismissValue.DismissedToStart) {
+                                        incomeToDelete = income
+                                        showConfirmDialog = true
+                                        false // Don't auto-dismiss
+                                    } else {
+                                        false
+                                    }
                                 }
-                            }
-                        )
+                            )
 
-                        SwipeToDismiss(
-                            state = dismissState,
-                            directions = setOf(DismissDirection.EndToStart),
-                            background = {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(Color.Red.copy(alpha = 0.2f))
-                                        .padding(horizontal = 20.dp),
-                                    contentAlignment = Alignment.CenterEnd
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Default.Delete,
-                                        contentDescription = "Delete",
-                                        tint = MaterialTheme.colorScheme.error
+                            SwipeToDismiss(
+                                state = dismissState,
+                                directions = setOf(DismissDirection.EndToStart),
+                                background = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .background(Color.Red.copy(alpha = 0.2f))
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                dismissContent = {
+                                    IncomeRow(
+                                        income = income,
+                                        sourceName = income.incomeSourceId, // This will show the ID unless mapped
+                                        onEdit = { editingIncome = income },
+                                        onDelete = {
+                                            scope.launch {
+                                                IncomeRepository.deleteIncome(userId, income.id)
+                                                loadData()
+                                                snackbarHostState.showSnackbar("Income deleted")
+                                            }
+                                        }
                                     )
                                 }
-                            },
-                            dismissContent = {
-                                IncomeRow(
-                                    income = income,
-                                    sourceName = income.incomeSourceId, // This will show the ID unless mapped
-                                    onEdit = { editingIncome = income },
-                                    onDelete = {
-                                        scope.launch {
-                                            IncomeRepository.deleteIncome(userId, income.id)
-                                            loadData()
-                                            snackbarHostState.showSnackbar("Income deleted")
-                                        }
-                                    }
-                                )
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }
+            PullRefreshIndicator(
+                refreshing = isRefreshing,
+                state = pullRefreshState,
+                modifier = Modifier.align(Alignment.TopCenter),
+                scale = true,
+                backgroundColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.primary
+            )
         }
 
         if (showAddDialog) {
