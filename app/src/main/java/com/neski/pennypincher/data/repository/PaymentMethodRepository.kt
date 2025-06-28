@@ -5,18 +5,27 @@ import com.neski.pennypincher.data.models.PaymentMethod
 import kotlinx.coroutines.tasks.await
 
 object PaymentMethodRepository {
-    suspend fun getAllPaymentMethods(userId: String): List<PaymentMethod> {
+    private val db = FirebaseFirestore.getInstance()
+    private var cachedMethods: List<PaymentMethod>? = null
+    private var cachedMethodsUserId: String? = null
+
+    suspend fun getAllPaymentMethods(userId: String, forceRefresh: Boolean = false): List<PaymentMethod> {
+        if (!forceRefresh && cachedMethods != null && cachedMethodsUserId == userId) {
+            return cachedMethods!!
+        }
         return try {
-            val snapshot = FirebaseFirestore.getInstance()
+            val snapshot = db
                 .collection("users")
                 .document(userId)
                 .collection("paymentMethods")
                 .get()
                 .await()
-
-            snapshot.documents.mapNotNull { doc ->
+            val list = snapshot.documents.mapNotNull { doc ->
                 doc.toObject(PaymentMethod::class.java)?.copy(id = doc.id)
             }
+            cachedMethods = list
+            cachedMethodsUserId = userId
+            list
         } catch (e: Exception) {
             emptyList()
         }
@@ -30,5 +39,27 @@ object PaymentMethodRepository {
             .document(method.id)
             .set(method)
             .await()
+    }
+
+    suspend fun deletePaymentMethod(userId: String, methodId: String) {
+        db.collection("users")
+            .document(userId)
+            .collection("paymentMethods")
+            .document(methodId)
+            .delete()
+            .await()
+        cachedMethods = null
+        cachedMethodsUserId = null
+    }
+
+    suspend fun updatePaymentMethod(userId: String, method: PaymentMethod) {
+        db.collection("users")
+            .document(userId)
+            .collection("paymentMethods")
+            .document(method.id)
+            .set(method)
+            .await()
+        cachedMethods = null
+        cachedMethodsUserId = null
     }
 }

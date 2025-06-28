@@ -6,20 +6,26 @@ import kotlinx.coroutines.tasks.await
 
 object CategoryRepository {
     private val db = FirebaseFirestore.getInstance()
+    private var cachedCategories: List<Category>? = null
+    private var cachedCategoriesUserId: String? = null
 
-    suspend fun getAllCategories(userId: String): List<Category> {
+    suspend fun getAllCategories(userId: String, forceRefresh: Boolean = false): List<Category> {
+        if (!forceRefresh && cachedCategories != null && cachedCategoriesUserId == userId) {
+            return cachedCategories!!
+        }
         return try {
-            val snapshot = FirebaseFirestore.getInstance()
+            val snapshot = db
                 .collection("users")
                 .document(userId)
                 .collection("categories")
                 .get()
                 .await()
-
-            snapshot.documents.mapNotNull { doc ->
-                val cat = doc.toObject(Category::class.java)?.copy(id = doc.id)
-                cat
+            val list = snapshot.documents.mapNotNull { doc ->
+                doc.toObject(Category::class.java)?.copy(id = doc.id)
             }
+            cachedCategories = list
+            cachedCategoriesUserId = userId
+            list
         } catch (e: Exception) {
             emptyList()
         }
