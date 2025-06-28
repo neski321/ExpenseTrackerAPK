@@ -6,8 +6,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -125,19 +123,18 @@ fun SearchExpensesScreen(userId: String) {
     }
 
     Scaffold(
-        topBar = {
-            TopAppBar(
-                title = { Text("Search Expenses") },
-                actions = {
-                    Icon(Icons.Default.Search, contentDescription = null)
-                }
-            )
-        }
+        // Removed topBar
     ) { innerPadding ->
-
-        Column(modifier = Modifier
-            .padding(innerPadding)
-            .padding(16.dp)) {
+        Column(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(16.dp)
+        ) {
+            Text(
+                "Search Expenses",
+                style = MaterialTheme.typography.headlineSmall,
+                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+            )
 
             if (isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {

@@ -149,4 +149,9 @@ object ExpenseRepository {
             // Handle error if needed
         }
     }
+
+    suspend fun getExpensesByCategory(userId: String, categoryId: String, forceRefresh: Boolean = false): List<Expense> {
+        val all = getAllExpenses(userId, forceRefresh)
+        return all.filter { it.categoryId == categoryId }
+    }
 }

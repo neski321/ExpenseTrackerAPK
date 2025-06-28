@@ -1,5 +1,6 @@
 package com.neski.pennypincher.ui.payment
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.*
@@ -26,7 +27,10 @@ import com.neski.pennypincher.ui.components.AddPaymentMethodDialog
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun PaymentMethodsScreen(userId: String) {
+fun PaymentMethodsScreen(
+    userId: String,
+    onPaymentMethodClick: (String, String) -> Unit = { _, _ -> }
+    ) {
     val scope = rememberCoroutineScope()
     var methods by remember { mutableStateOf<List<PaymentMethod>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -125,6 +129,7 @@ fun PaymentMethodsScreen(userId: String) {
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(bottom = 8.dp)
+                                        .clickable { onPaymentMethodClick(method.id, method.name) }
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -179,6 +184,7 @@ fun PaymentMethodsScreen(userId: String) {
         AlertDialog(
             onDismissRequest = {
                 showConfirmDialog = false
+                //dismissStates[methodToDelete?.id]?.reset()
                 methodToDelete = null
             },
             title = { Text("Delete Payment Method") },
@@ -194,8 +200,11 @@ fun PaymentMethodsScreen(userId: String) {
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showConfirmDialog = false
-                    methodToDelete = null
+                    scope.launch {
+                        showConfirmDialog = false
+                        dismissStates[methodToDelete?.id]?.reset()
+                        methodToDelete = null
+                    }
                 }) {
                     Text("Cancel")
                 }

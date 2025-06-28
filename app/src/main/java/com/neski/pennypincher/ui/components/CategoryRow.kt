@@ -16,14 +16,14 @@ fun CategoryRow(
     category: Category,
     categoryNameMap: Map<String, String> = emptyMap(), // Map of id -> name
     onEdit: () -> Unit = {},
-    //onDelete: () -> Unit = {}
+    onClick: () -> Unit = {}
 ) {
     val parentName = category.parentId?.let { categoryNameMap[it] }
 
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onEdit() },
+            .clickable { onClick() },
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface)
     ) {
         Row(
