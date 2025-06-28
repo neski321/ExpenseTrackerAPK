@@ -103,7 +103,9 @@ class MainActivity : ComponentActivity() {
                                             onNavigate = { selectedRoute = it },
                                             onNavigateToExpensesByMonth = { month ->
                                                 selectedRoute = "expensesByMonth:$month"
-                                            }
+                                            },
+                                            categoryStack = categoryStack,
+                                            setCategoryOriginRoute = { categoryOriginRoute = it }
                                         )
                                         selectedRoute == "expenses" -> ExpensesScreen(
                                             userId = userId,
