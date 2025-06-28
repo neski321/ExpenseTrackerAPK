@@ -46,6 +46,7 @@ class MainActivity : ComponentActivity() {
 
             // --- Category navigation stack for breadcrumbs ---
             val categoryStack = remember { mutableStateListOf<Pair<String, String>>() }
+            var categoryOriginRoute by remember { mutableStateOf<String?>(null) }
 
             PennyPincherTheme(useDarkTheme = isDarkTheme) {
                 when (selectedRoute) {
@@ -99,12 +100,20 @@ class MainActivity : ComponentActivity() {
                                     when {
                                         selectedRoute == "dashboard" -> DashboardScreen(
                                             userId = userId,
-                                            onNavigateToExpenses = { selectedRoute = "expenses" },
+                                            onNavigate = { selectedRoute = it },
                                             onNavigateToExpensesByMonth = { month ->
                                                 selectedRoute = "expensesByMonth:$month"
                                             }
                                         )
-                                        selectedRoute == "expenses" -> ExpensesScreen(userId = userId)
+                                        selectedRoute == "expenses" -> ExpensesScreen(
+                                            userId = userId,
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                categoryStack.clear()
+                                                categoryStack.add(categoryId to categoryName)
+                                                categoryOriginRoute = "expenses"
+                                                selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                            }
+                                        )
                                         selectedRoute.startsWith("expensesByMonth:") -> {
                                             val month = selectedRoute.removePrefix("expensesByMonth:")
                                             FilteredExpensesScreen(
@@ -119,6 +128,7 @@ class MainActivity : ComponentActivity() {
                                             onCategoryClick = { categoryId, categoryName ->
                                                 categoryStack.clear()
                                                 categoryStack.add(categoryId to categoryName)
+                                                categoryOriginRoute = "categories"
                                                 selectedRoute = "expensesByCategory:$categoryId:$categoryName"
                                             }
                                         )
@@ -128,7 +138,15 @@ class MainActivity : ComponentActivity() {
                                                 selectedRoute = "expensesByPaymentMethod:$paymentMethodId:$paymentMethodName"
                                             }
                                         )
-                                        selectedRoute == "search" -> SearchExpensesScreen(userId = userId)
+                                        selectedRoute == "search" -> SearchExpensesScreen(
+                                            userId = userId,
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                categoryStack.clear()
+                                                categoryStack.add(categoryId to categoryName)
+                                                categoryOriginRoute = "search"
+                                                selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                            }
+                                        )
                                         selectedRoute == "settings" -> SettingsScreen(userId = userId)
                                         selectedRoute.startsWith("expensesByCategory:") -> {
                                             val parts = selectedRoute.removePrefix("expensesByCategory:").split(":")
@@ -145,9 +163,10 @@ class MainActivity : ComponentActivity() {
                                                         val (prevId, prevName) = categoryStack.last()
                                                         selectedRoute = "expensesByCategory:$prevId:$prevName"
                                                     } else {
-                                                        // Back to categories root
+                                                        // Back to origin (expenses or categories)
                                                         categoryStack.clear()
-                                                        selectedRoute = "categories"
+                                                        selectedRoute = categoryOriginRoute ?: "categories"
+                                                        categoryOriginRoute = null
                                                     }
                                                 },
                                                 onNavigateToCategory = { newCategoryId, newCategoryName ->

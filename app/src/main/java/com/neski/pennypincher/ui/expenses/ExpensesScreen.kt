@@ -51,7 +51,7 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
     ExperimentalMaterial3Api::class
 )
 @Composable
-fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> Unit)? = null) {
+fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> Unit)? = null, onNavigateToCategory: ((String, String) -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     var expenses by remember { mutableStateOf<List<Expense>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -208,7 +208,15 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
                                                     expenseToEdit = expense
                                                     showEditDialog = true
                                                 },
-                                                onDelete = { deleteExpense(expense) }
+                                                onDelete = {
+                                                    expenseToDelete = expense
+                                                    showConfirmDialog = true
+                                                },
+                                                onCategoryClick = {
+                                                    if (onNavigateToCategory != null && expense.categoryId.isNotBlank()) {
+                                                        onNavigateToCategory(expense.categoryId, categoryName)
+                                                    }
+                                                }
                                             )
                                         }
                                     )

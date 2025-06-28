@@ -26,7 +26,7 @@ fun SpendingBarChartSection(
 ) {
     val months = data.keys.toList()
     val values = data.values.map { it.toFloat() }
-    val entryModel = entryModelOf(*values.toTypedArray())
+    //val entryModel = entryModelOf(*values.toTypedArray())
     val barColor = MaterialTheme.colorScheme.primary
     val backgroundColor = MaterialTheme.colorScheme.surfaceVariant
     val borderColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
@@ -62,7 +62,7 @@ fun SpendingBarChartSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(320.dp)
+                    .height(240.dp)
             ) {
                 // Draw bars manually for click support
                 Row(
@@ -80,7 +80,7 @@ fun SpendingBarChartSection(
                         ) {
                             Box(
                                 modifier = Modifier
-                                    .height((200.dp * barHeightRatio).coerceAtLeast(8.dp))
+                                    .height((150.dp * barHeightRatio).coerceAtLeast(8.dp))
                                     .width(32.dp)
                                     .background(
                                         color = barColor,

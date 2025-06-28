@@ -20,12 +20,17 @@ import androidx.compose.ui.graphics.Color
 import com.neski.pennypincher.data.repository.CategoryRepository
 import com.neski.pennypincher.data.models.Expense
 import com.neski.pennypincher.data.models.Category
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Label
+import com.google.firebase.auth.FirebaseAuth
+import com.neski.pennypincher.ui.components.AddExpenseDialog
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
 fun DashboardScreen(
     userId: String,
-    onNavigateToExpenses: () -> Unit,
+    onNavigate: (String) -> Unit,
     onNavigateToExpensesByMonth: (String) -> Unit = {}
 ) {
     val scope = rememberCoroutineScope()
@@ -80,6 +85,55 @@ fun DashboardScreen(
                     .padding(16.dp)
                     .verticalScroll(scrollState)
             ) {
+                // Quick Actions Card
+                var showAddExpenseDialog by remember { mutableStateOf(false) }
+                if (showAddExpenseDialog) {
+                    AddExpenseDialog(
+                        userId = userId,
+                        onDismiss = { showAddExpenseDialog = false },
+                        onAdd = { _, _, _, _, _, _, _, _ -> showAddExpenseDialog = false }
+                    )
+                }
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Column(modifier = Modifier.padding(20.dp)) {
+                        Text("Quick Actions", style = MaterialTheme.typography.titleMedium)
+                        Text(
+                            "Manage your finances efficiently.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+                        Button(
+                            onClick = { showAddExpenseDialog = true },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            Icon(Icons.Default.Add, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Add New Expense", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                        Spacer(Modifier.height(10.dp))
+                        Button(
+                            onClick = { onNavigate("categories") },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.surface,
+                                contentColor = MaterialTheme.colorScheme.onSurface
+                            )
+                        ) {
+                            Icon(Icons.Default.Label, contentDescription = null, tint = MaterialTheme.colorScheme.onSurface)
+                            Spacer(Modifier.width(8.dp))
+                            Text("Manage Categories", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
+                }
+                Spacer(modifier = Modifier.height(24.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(16.dp)
@@ -91,7 +145,7 @@ fun DashboardScreen(
                     StatCard(
                         title = "This Week",
                         value = "$weeklyTransactionCount transactions",
-                        onClick = onNavigateToExpenses // 🔗 click to expenses page
+                        onClick = { onNavigate("expenses") }
                     )
                 }
                 Spacer(modifier = Modifier.height(24.dp))

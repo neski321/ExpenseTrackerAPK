@@ -10,6 +10,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.neski.pennypincher.data.models.Category
+import com.neski.pennypincher.ui.categories.CategoryIcon
 
 @Composable
 fun CategoryRow(
@@ -33,21 +34,26 @@ fun CategoryRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Column {
-                Text(
-                    text = category.name,
-                    style = MaterialTheme.typography.titleMedium
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                CategoryIcon(
+                    name = category.name,
+                    color = category.color ?: "#888888"
                 )
-
-                if (!parentName.isNullOrBlank()) {
+                Spacer(modifier = Modifier.width(12.dp))
+                Column {
                     Text(
-                        text = "Subcategory of: $parentName",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                        text = category.name,
+                        style = MaterialTheme.typography.titleMedium
                     )
+                    if (!parentName.isNullOrBlank()) {
+                        Text(
+                            text = "Subcategory of: $parentName",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
                 }
             }
-
             IconButton(onClick = { onEdit() }) {
                 Icon(Icons.Default.Edit, contentDescription = "Edit Category")
             }

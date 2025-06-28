@@ -1,16 +1,15 @@
 package com.neski.pennypincher.ui.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-//import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-//import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.neski.pennypincher.data.models.Expense
@@ -23,7 +22,8 @@ fun ExpenseRow(
     categoryName: String,
     paymentMethodName: String,
     onEdit: () -> Unit = {},
-    onDelete: () -> Unit = {}
+    onDelete: () -> Unit = {},
+    onCategoryClick: () -> Unit = {}
 ) {
     val dateFormatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(expense.date)
 
@@ -54,6 +54,7 @@ fun ExpenseRow(
                                 MaterialTheme.colorScheme.primary.copy(alpha = 0.15f),
                                 RoundedCornerShape(12.dp)
                             )
+                            .clickable { onCategoryClick() }
                             .padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.primary
