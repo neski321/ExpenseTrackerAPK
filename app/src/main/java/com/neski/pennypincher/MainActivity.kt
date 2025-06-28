@@ -26,6 +26,7 @@ import com.neski.pennypincher.ui.income.IncomeScreen
 import com.neski.pennypincher.ui.payment.PaymentMethodsScreen
 import com.neski.pennypincher.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
+import com.neski.pennypincher.ui.expenses.FilteredExpensesScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -102,9 +103,9 @@ class MainActivity : ComponentActivity() {
                                         selectedRoute == "expenses" -> ExpensesScreen(userId = userId)
                                         selectedRoute.startsWith("expensesByMonth:") -> {
                                             val month = selectedRoute.removePrefix("expensesByMonth:")
-                                            ExpensesScreen(
+                                            FilteredExpensesScreen(
                                                 userId = userId,
-                                                filterMonth = month,
+                                                month = month,
                                                 onBack = { selectedRoute = "dashboard" }
                                             )
                                         }

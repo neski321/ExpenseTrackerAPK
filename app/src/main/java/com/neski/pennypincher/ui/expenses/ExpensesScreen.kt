@@ -1,10 +1,10 @@
 package com.neski.pennypincher.ui.expenses
 
+import android.annotation.SuppressLint
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,6 +38,7 @@ import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 //import androidx.compose.material.DismissValue
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
 import java.util.Date
@@ -45,6 +46,7 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
+@SuppressLint("SimpleDateFormat")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class,
     ExperimentalMaterial3Api::class
 )
@@ -127,13 +129,9 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
                     title = { Text("Expenses for $filterMonth") },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
-                            Icon(Icons.Default.ArrowBack, contentDescription = "Back")
+                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
                     }
-                )
-            } else {
-                TopAppBar(
-                    title = { Text("Manage Expenses") }
                 )
             }
         },
@@ -150,7 +148,7 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
         Box(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(12.dp)
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
@@ -208,7 +206,7 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
                                     )
                                 }
                             )
-                            Spacer(modifier = Modifier.height(4.dp))
+                            Spacer(modifier = Modifier.height(3.dp))
                         }
 
                         item {
