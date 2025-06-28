@@ -27,9 +27,9 @@ import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun CategoriesScreen(userId: String) {
+fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit = { _, _ -> }) {
     val scope = rememberCoroutineScope()
     var categories by remember { mutableStateOf<List<Category>>(emptyList()) }
     var groupedCategories by remember { mutableStateOf<Map<String, List<Category>>>(emptyMap()) }
@@ -38,8 +38,6 @@ fun CategoriesScreen(userId: String) {
     var showDialog by remember { mutableStateOf(false) }
     var categoryToDelete by remember { mutableStateOf<Category?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
-    var page by remember { mutableStateOf(0) }
-    val pageSize = 20
     val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
     var showEditDialog by remember { mutableStateOf(false) }
     var categoryToEdit by remember { mutableStateOf<Category?>(null) }
@@ -91,6 +89,7 @@ fun CategoriesScreen(userId: String) {
     }
 
     Scaffold(
+        topBar = { TopAppBar(title = { Text("Categories") }) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showDialog = true },
@@ -103,16 +102,12 @@ fun CategoriesScreen(userId: String) {
         Box(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                Text("Categories", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
-
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -159,8 +154,10 @@ fun CategoriesScreen(userId: String) {
                                                 onEdit = {
                                                     categoryToEdit = category
                                                     showEditDialog = true
+                                                },
+                                                onClick = {
+                                                    onCategoryClick(category.id, category.name)
                                                 }
-
                                             )
                                         }
                                     )

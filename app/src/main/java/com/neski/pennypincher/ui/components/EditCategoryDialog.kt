@@ -40,11 +40,15 @@ fun EditCategoryDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Edit Category", style = MaterialTheme.typography.titleLarge)
+                    Column {
+                        Text("Edit Category", style = MaterialTheme.typography.titleLarge)
+                        Text("Update the details of this category.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
+                Spacer(modifier = Modifier.height(10.dp))
                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     Text("Category Name", style = MaterialTheme.typography.labelSmall)
                     OutlinedTextField(

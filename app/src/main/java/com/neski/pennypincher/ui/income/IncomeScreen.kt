@@ -90,7 +90,6 @@ fun IncomeScreen(userId: String) {
         Box(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {

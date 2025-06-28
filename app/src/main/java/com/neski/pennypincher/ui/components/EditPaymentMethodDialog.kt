@@ -30,13 +30,18 @@ fun EditPaymentMethodDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Edit Payment Method", style = MaterialTheme.typography.titleLarge)
+                    Column {
+                        Text("Edit Payment Method", style = MaterialTheme.typography.titleLarge)
+                        Text(
+                            "Update the details of this payment method.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")
                     }
                 }
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Update the details of this payment method.", style = MaterialTheme.typography.bodyMedium)
+                Spacer(modifier = Modifier.height(10.dp))
                 Spacer(modifier = Modifier.height(16.dp))
                 OutlinedTextField(
                     value = name,

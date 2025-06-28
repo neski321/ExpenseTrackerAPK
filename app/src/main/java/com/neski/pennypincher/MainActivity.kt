@@ -27,6 +27,7 @@ import com.neski.pennypincher.ui.payment.PaymentMethodsScreen
 import com.neski.pennypincher.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 import com.neski.pennypincher.ui.expenses.FilteredExpensesScreen
+import com.neski.pennypincher.ui.income.IncomeSourcesScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -42,6 +43,9 @@ class MainActivity : ComponentActivity() {
 
             // Firebase user ID
             val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+
+            // --- Category navigation stack for breadcrumbs ---
+            val categoryStack = remember { mutableStateListOf<Pair<String, String>>() }
 
             PennyPincherTheme(useDarkTheme = isDarkTheme) {
                 when (selectedRoute) {
@@ -110,10 +114,60 @@ class MainActivity : ComponentActivity() {
                                             )
                                         }
                                         selectedRoute == "income" -> IncomeScreen(userId = userId)
-                                        selectedRoute == "categories" -> CategoriesScreen(userId = userId)
-                                        selectedRoute == "paymentMethods" -> PaymentMethodsScreen(userId = userId)
+                                        selectedRoute == "categories" -> CategoriesScreen(
+                                            userId = userId,
+                                            onCategoryClick = { categoryId, categoryName ->
+                                                categoryStack.clear()
+                                                categoryStack.add(categoryId to categoryName)
+                                                selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                            }
+                                        )
+                                        selectedRoute == "paymentMethods" -> PaymentMethodsScreen(
+                                            userId = userId,
+                                            onPaymentMethodClick = { paymentMethodId, paymentMethodName ->
+                                                selectedRoute = "expensesByPaymentMethod:$paymentMethodId:$paymentMethodName"
+                                            }
+                                        )
                                         selectedRoute == "search" -> SearchExpensesScreen(userId = userId)
                                         selectedRoute == "settings" -> SettingsScreen(userId = userId)
+                                        selectedRoute.startsWith("expensesByCategory:") -> {
+                                            val parts = selectedRoute.removePrefix("expensesByCategory:").split(":")
+                                            val categoryId = parts.getOrNull(0) ?: ""
+                                            val categoryName = parts.drop(1).joinToString(":")
+                                            FilteredExpensesScreen(
+                                                userId = userId,
+                                                categoryId = categoryId,
+                                                categoryName = categoryName,
+                                                onBack = {
+                                                    if (categoryStack.size > 1) {
+                                                        // Pop current, go to previous
+                                                        categoryStack.removeAt(categoryStack.lastIndex)
+                                                        val (prevId, prevName) = categoryStack.last()
+                                                        selectedRoute = "expensesByCategory:$prevId:$prevName"
+                                                    } else {
+                                                        // Back to categories root
+                                                        categoryStack.clear()
+                                                        selectedRoute = "categories"
+                                                    }
+                                                },
+                                                onNavigateToCategory = { newCategoryId, newCategoryName ->
+                                                    categoryStack.add(newCategoryId to newCategoryName)
+                                                    selectedRoute = "expensesByCategory:$newCategoryId:$newCategoryName"
+                                                }
+                                            )
+                                        }
+                                        selectedRoute.startsWith("expensesByPaymentMethod:") -> {
+                                            val parts = selectedRoute.removePrefix("expensesByPaymentMethod:").split(":")
+                                            val paymentMethodId = parts.getOrNull(0) ?: ""
+                                            val paymentMethodName = parts.drop(1).joinToString(":")
+                                            FilteredExpensesScreen(
+                                                userId = userId,
+                                                paymentMethodId = paymentMethodId,
+                                                paymentMethodName = paymentMethodName,
+                                                onBack = { selectedRoute = "paymentMethods" }
+                                            )
+                                        }
+                                        selectedRoute == "incomeSources" -> IncomeSourcesScreen(userId = userId)
                                     }
                                 }
                             }

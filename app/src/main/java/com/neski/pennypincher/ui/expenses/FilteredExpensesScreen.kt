@@ -13,23 +13,35 @@ import com.neski.pennypincher.data.models.Expense
 import com.neski.pennypincher.data.repository.ExpenseRepository
 import com.neski.pennypincher.ui.components.ExpenseRow
 import kotlinx.coroutines.launch
-import java.time.format.DateTimeFormatter
 import com.neski.pennypincher.data.repository.CategoryRepository
 import com.neski.pennypincher.data.models.Category
 import com.neski.pennypincher.data.models.PaymentMethod
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
 import androidx.compose.material.icons.Icons
+
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
+import androidx.compose.foundation.clickable
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.text.font.FontWeight
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
 @Composable
-fun FilteredExpensesScreen(userId: String, month: String, onBack: (() -> Unit)? = null) {
+fun FilteredExpensesScreen(
+    userId: String,
+    month: String? = null,
+    categoryId: String? = null,
+    categoryName: String? = null,
+    paymentMethodId: String? = null,
+    paymentMethodName: String? = null,
+    onBack: (() -> Unit)? = null,
+    onNavigateToCategory: ((String, String) -> Unit)? = null
+) {
     val scope = rememberCoroutineScope()
     var expenses by remember { mutableStateOf<List<Expense>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
@@ -37,6 +49,12 @@ fun FilteredExpensesScreen(userId: String, month: String, onBack: (() -> Unit)? 
     var paymentMethods by remember { mutableStateOf<List<PaymentMethod>>(emptyList()) }
     val categoryMap = categories.associateBy({ it.id }, { it.name })
     val paymentMethodMap = paymentMethods.associateBy({ it.id }, { it.name })
+
+    // Find current category and its parent if it's a child category
+    val currentCategory = categories.find { it.id == categoryId }
+    val parentCategory = currentCategory?.parentId?.let { parentId ->
+        categories.find { it.id == parentId }
+    }
 
     //val formatter = DateTimeFormatter.ofPattern("MMMM")
 
@@ -47,23 +65,42 @@ fun FilteredExpensesScreen(userId: String, month: String, onBack: (() -> Unit)? 
     var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    LaunchedEffect(userId, month) {
+    LaunchedEffect(userId, month, categoryId, paymentMethodId) {
         scope.launch {
             val allExpenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
-            // Parsing month and year from the bar label ('Jan 2024')
-            val parts = month.split(" ")
-            val monthNum = try {
-                java.text.DateFormatSymbols().months.indexOfFirst { it.startsWith(parts[0], ignoreCase = true) }
-            } catch (e: Exception) { -1 }
-            val yearNum = parts.getOrNull(1)?.toIntOrNull() ?: -1
-            expenses = if (monthNum >= 0 && yearNum > 0) {
-                allExpenses.filter {
-                    val cal = java.util.Calendar.getInstance().apply { time = it.date }
-                    cal.get(java.util.Calendar.MONTH) == monthNum && cal.get(java.util.Calendar.YEAR) == yearNum
-                }
-            } else emptyList()
             categories = CategoryRepository.getAllCategories(userId)
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
+            val filtered = when {
+                month != null -> {
+                    val parts = month.split(" ")
+                    val monthNum = try {
+                        java.text.DateFormatSymbols().months.indexOfFirst { it.startsWith(parts[0], ignoreCase = true) }
+                    } catch (e: Exception) { -1 }
+                    val yearNum = parts.getOrNull(1)?.toIntOrNull() ?: -1
+                    if (monthNum >= 0 && yearNum > 0) {
+                        allExpenses.filter {
+                            val cal = java.util.Calendar.getInstance().apply { time = it.date }
+                            cal.get(java.util.Calendar.MONTH) == monthNum && cal.get(java.util.Calendar.YEAR) == yearNum
+                        }
+                    } else emptyList()
+                }
+                categoryId != null -> {
+                    val allCategoryIds = mutableSetOf(categoryId)
+                    fun findChildren(parentId: String) {
+                        categories.filter { it.parentId == parentId }.forEach {
+                            allCategoryIds.add(it.id)
+                            findChildren(it.id)
+                        }
+                    }
+                    findChildren(categoryId)
+                    allExpenses.filter { it.categoryId in allCategoryIds }
+                }
+                paymentMethodId != null -> {
+                    allExpenses.filter { it.paymentMethodId == paymentMethodId }
+                }
+                else -> emptyList()
+            }
+            expenses = filtered
             isLoading = false
         }
     }
@@ -82,9 +119,86 @@ fun FilteredExpensesScreen(userId: String, month: String, onBack: (() -> Unit)? 
 
     Scaffold(
         topBar = {
+            // Build the path from root to selected category (outside composable lambda)
+            val categoryPath = if (categoryId != null && categoryName != null) {
+                val path = mutableListOf<Category>()
+                var cat = categories.find { it.id == categoryId }
+                while (cat != null) {
+                    path.add(cat)
+                    cat = cat.parentId?.let { parentId -> categories.find { it.id == parentId } }
+                }
+                path.reverse()
+                path
+            } else null
+
+            val titleComposable: @Composable () -> Unit = when {
+                categoryPath != null && categoryPath.isNotEmpty() -> {
+                    @Composable {
+                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("Expenses for ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                categoryPath.forEachIndexed { idx, c ->
+                                    if (idx > 0) {
+                                        Text(" > ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleLarge)
+                                    }
+                                    if (idx < categoryPath.size - 1 && onNavigateToCategory != null) {
+                                        Text(
+                                            text = c.name,
+                                            color = MaterialTheme.colorScheme.primary,
+                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                                            modifier = Modifier.clickable { onNavigateToCategory(c.id, c.name) }
+                                        )
+                                    } else {
+                                        Text(
+                                            text = c.name,
+                                            color = MaterialTheme.colorScheme.onSurface,
+                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
+                                        )
+                                    }
+                                }
+                            }
+                            Text(
+                                "Showing expenses recorded for this category and its sub-categories across all time.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                }
+                month != null -> {
+                    @Composable {
+                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
+                            Text("Expenses for $month", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(
+                                "View your expenses for this period.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                }
+                paymentMethodName != null -> {
+                    @Composable {
+                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
+                            Text("Expenses for $paymentMethodName", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text(
+                                "View your expenses for this payment method.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                modifier = Modifier.padding(top = 2.dp)
+                            )
+                        }
+                    }
+                }
+                else -> {
+                    @Composable { Text("Filtered Expenses", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                }
+            }
             if (onBack != null) {
                 TopAppBar(
-                    title = { Text("Expenses for $month") },
+                    title = { titleComposable() },
                     navigationIcon = {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
@@ -92,7 +206,7 @@ fun FilteredExpensesScreen(userId: String, month: String, onBack: (() -> Unit)? 
                     }
                 )
             } else {
-                TopAppBar(title = { Text("Expenses for $month") })
+                TopAppBar(title = { titleComposable() })
             }
         },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
@@ -101,7 +215,13 @@ fun FilteredExpensesScreen(userId: String, month: String, onBack: (() -> Unit)? 
             if (isLoading) {
                 CircularProgressIndicator()
             } else if (expenses.isEmpty()) {
-                Text("No expenses found for $month.")
+                val filterType = when {
+                    month != null -> "this month"
+                    categoryName != null -> "this category"
+                    paymentMethodName != null -> "this payment method"
+                    else -> "the selected filter"
+                }
+                Text("No expenses found for $filterType.")
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(expenses, key = { it.id }) { expense ->

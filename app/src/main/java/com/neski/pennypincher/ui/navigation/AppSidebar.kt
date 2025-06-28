@@ -8,6 +8,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.Logout
+import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Search
@@ -27,8 +29,9 @@ fun AppSidebar(
         SidebarItem("Dashboard", "dashboard", Icons.Default.Home),
         SidebarItem("Expenses", "expenses", Icons.Default.AttachMoney),
         SidebarItem("Search Expenses", "search", Icons.Default.Search),
-        SidebarItem("Income", "income", Icons.Default.TrendingUp),
+        SidebarItem("Income", "income", Icons.AutoMirrored.Filled.TrendingUp),
         SidebarItem("Categories", "categories", Icons.Default.Category),
+        SidebarItem("Income Sources", "incomeSources", Icons.Default.Money),
         SidebarItem("Payment Methods", "paymentMethods", Icons.Default.CreditCard),
         SidebarItem("Settings", "settings", Icons.Default.Settings)
     )
@@ -83,7 +86,7 @@ fun AppSidebar(
                 selected = false,
                 onClick = onLogout,
                 icon = {
-                    Icon(Icons.Default.Logout, contentDescription = "Logout", tint = colors.onSurface)
+                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = colors.onSurface)
                 },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
             )
