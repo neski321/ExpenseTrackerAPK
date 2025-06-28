@@ -34,7 +34,7 @@ import java.time.ZoneId
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
-fun SearchExpensesScreen(userId: String) {
+fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String) -> Unit)? = null) {
     val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
 
@@ -357,11 +357,12 @@ fun SearchExpensesScreen(userId: String) {
 
             Spacer(Modifier.height(16.dp))
 
-            LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxSize(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
                 items(filteredExpenses, key = { it.id }) { expense ->
-                    val dismissState = dismissStates.getOrPut(expense.id) {
-                        rememberDismissState()
-                    }
+                    val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
                     val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
                     val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
 
@@ -377,7 +378,7 @@ fun SearchExpensesScreen(userId: String) {
 
                     SwipeToDismiss(
                         state = dismissState,
-                        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                        directions = setOf(DismissDirection.EndToStart),
                         background = {},
                         dismissContent = {
                             ExpenseRow(
@@ -388,12 +389,19 @@ fun SearchExpensesScreen(userId: String) {
                                     expenseToEdit = expense
                                     showEditDialog = true
                                 },
-                                onDelete = { deleteExpense(expense) }
+                                onDelete = {
+                                    expenseToDelete = expense
+                                    showConfirmDialog = true
+                                },
+                                onCategoryClick = {
+                                    if (onNavigateToCategory != null && expense.categoryId.isNotBlank()) {
+                                        onNavigateToCategory(expense.categoryId, categoryName)
+                                    }
+                                }
                             )
                         }
                     )
                 }
-
             }
         }
     }
