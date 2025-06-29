@@ -34,6 +34,8 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.text.font.FontWeight
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -81,7 +83,10 @@ fun IncomeScreen(userId: String) {
 
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(
+                onClick = { showAddDialog = true },
+                containerColor = MaterialTheme.colorScheme.primary
+                ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Income")
             }
         },
@@ -99,16 +104,20 @@ fun IncomeScreen(userId: String) {
                 Text(
                     text = "Manage Income",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = getTextColor()
                 )
                 Text(
                     text = "Track your earnings and keep your finances in order.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = getTextColor()
                 )
                 Spacer(Modifier.height(12.dp))
                 if (isLoading) {
-                    CircularProgressIndicator()
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading income...")
+                    }
                 } else if (incomes.isEmpty()) {
-                    Text("No income records found.")
+                    Text("No income records found.", color = getTextColor())
                 } else {
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(incomes, key = { it.id }) { income ->
@@ -176,8 +185,10 @@ fun IncomeScreen(userId: String) {
                 userId = userId,
                 onDismiss = { showAddDialog = false },
                 onAdd = {
-                    showAddDialog = false
-                    loadData()
+                    scope.launch {
+                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                        showAddDialog = false
+                    }
                 }
             )
         }
@@ -189,11 +200,9 @@ fun IncomeScreen(userId: String) {
                 onDismiss = { editingIncome = null },
                 onUpdate = { updated ->
                     scope.launch {
-                        IncomeRepository.updateIncome(userId, updated)
-                        loadData()
-                        snackbarHostState.showSnackbar("Income updated")
+                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                        editingIncome = null
                     }
-                    editingIncome = null
                 }
             )
         }
@@ -202,8 +211,8 @@ fun IncomeScreen(userId: String) {
     if (showConfirmDialog && incomeToDelete != null) {
         AlertDialog(
             onDismissRequest = { showConfirmDialog = false },
-            title = { Text("Delete Income?") },
-            text = { Text("Are you sure you want to delete this income record? This action cannot be undone.") },
+            title = { Text("Delete Income?", color = getTextColor()) },
+            text = { Text("Are you sure you want to delete this income record? This action cannot be undone.", color = getTextColor()) },
             confirmButton = {
                 TextButton(onClick = {
                     scope.launch {
@@ -222,7 +231,7 @@ fun IncomeScreen(userId: String) {
                     showConfirmDialog = false
                     incomeToDelete = null
                 }) {
-                    Text("Cancel")
+                    Text("Cancel", color = getTextColor())
                 }
             }
         )

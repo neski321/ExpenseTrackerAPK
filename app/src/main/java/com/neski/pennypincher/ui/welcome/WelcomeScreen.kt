@@ -11,7 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AttachMoney
-import androidx.compose.ui.graphics.Color
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
@@ -35,7 +35,7 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
             text = "PennyPincher by neski",
             fontSize = 28.sp,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.primary
+            color = getTextColor()
         )
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -44,13 +44,14 @@ fun WelcomeScreen(onGetStarted: () -> Unit) {
             text = "Take control of your finances with ease.\nTrack spending, set budgets, and achieve your financial goals.",
             textAlign = TextAlign.Center,
             fontSize = 16.sp,
-            color = MaterialTheme.colorScheme.onBackground
+            color = getTextColor(),
+            fontWeight = FontWeight.Medium
         )
 
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(onClick = onGetStarted) {
-            Text("Get Started")
+            Text("Get Started", color = getTextColor())
         }
     }
 }

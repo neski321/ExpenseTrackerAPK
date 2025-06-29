@@ -37,6 +37,8 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.text.font.FontWeight
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @SuppressLint("SimpleDateFormat")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class,
@@ -138,18 +140,20 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
                 Text(
                     text = "Manage Expenses",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = getTextColor()
                 )
                 Text(
                     text = "Track your daily spending and keep your finances in order.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = getTextColor()
                 )
                 Spacer(Modifier.height(12.dp))
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading expenses...")
                     }
                 } else if (filteredExpenses.isEmpty()) {
-                    Text("No expenses found.")
+                    Text("No expenses found.", color = getTextColor())
                 } else {
                     Box(
                         modifier = Modifier
@@ -305,24 +309,24 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
         AddExpenseDialog(
             userId = userId,
             onDismiss = { showDialog = false },
-            onAdd = { desc, amt, curr, date, cat, method, isSub, nextDue ->
-                val newExpense = Expense(
-                    id = UUID.randomUUID().toString(),
-                    description = desc,
-                    amount = amt,
-                    currencyId = curr,
-                    date = date,
-                    categoryId = cat,
-                    paymentMethodId = method,
-                    isSubscription = isSub,
-                    nextDueDate = nextDue ?: Date() // ✅ add this
-                )
+            onAdd = { description, amount, currency, date, category, paymentMethod, isSubscription, nextDueDate ->
                 scope.launch {
+                    val newExpense = Expense(
+                        id = UUID.randomUUID().toString(),
+                        description = description,
+                        amount = amount,
+                        currencyId = currency,
+                        date = date,
+                        categoryId = category,
+                        paymentMethodId = paymentMethod,
+                        isSubscription = isSubscription,
+                        nextDueDate = nextDueDate ?: Date()
+                    )
                     ExpenseRepository.addExpense(userId, newExpense)
-                    expenses = ExpenseRepository.getAllExpenses(userId)
+                    expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
                     snackbarHostState.showSnackbar("Expense added successfully")
+                    showDialog = false
                 }
-                showDialog = false
             }
         )
     }
@@ -335,7 +339,7 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
             onUpdate = { updatedExpense ->
                 scope.launch {
                     ExpenseRepository.updateExpense(userId, updatedExpense)
-                    expenses = ExpenseRepository.getAllExpenses(userId)
+                    expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
                     expenseBeingEdited = null
                     snackbarHostState.showSnackbar("Expense updated successfully")
                 }

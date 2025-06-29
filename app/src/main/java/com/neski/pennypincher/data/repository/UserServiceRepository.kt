@@ -164,6 +164,7 @@ object UserServiceRepository {
             Currency(id = "CAD", code = "CAD", name = "Canadian Dollar", symbol = "C$"),
             Currency(id = "AUD", code = "AUD", name = "Australian Dollar", symbol = "A$"),
             Currency(id = "CHF", code = "CHF", name = "Swiss Franc", symbol = "CHF"),
+            /*
             Currency(id = "CNY", code = "CNY", name = "Chinese Yuan", symbol = "¥"),
             Currency(id = "INR", code = "INR", name = "Indian Rupee", symbol = "₹"),
             Currency(id = "BRL", code = "BRL", name = "Brazilian Real", symbol = "R$"),
@@ -177,6 +178,8 @@ object UserServiceRepository {
             Currency(id = "PLN", code = "PLN", name = "Polish Złoty", symbol = "zł"),
             Currency(id = "CZK", code = "CZK", name = "Czech Koruna", symbol = "Kč"),
             Currency(id = "HUF", code = "HUF", name = "Hungarian Forint", symbol = "Ft")
+
+             */
         )
 
         defaultCurrencies.forEach { currency ->

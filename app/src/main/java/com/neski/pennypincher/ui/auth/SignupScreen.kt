@@ -25,6 +25,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.neski.pennypincher.data.repository.AuthRepository
 import com.neski.pennypincher.data.repository.UserServiceRepository
 import kotlinx.coroutines.launch
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @Composable
 fun SignupScreen(onSignupSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
@@ -70,11 +72,11 @@ fun SignupScreen(onSignupSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
                         .padding(bottom = 12.dp)
                 )
 
-                Text("Create Your Account", fontSize = 24.sp, color = Color(0xFF50A8FF))
+                Text("Create Your Account", fontSize = 24.sp, color = getTextColor())
                 Text(
                     "Join PennyPincher by Neski and start managing your finances today.",
                     fontSize = 14.sp,
-                    color = Color.LightGray,
+                    color = getTextColor(),
                     modifier = Modifier.padding(top = 4.dp, bottom = 20.dp)
                 )
 
@@ -168,26 +170,25 @@ fun SignupScreen(onSignupSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
                     enabled = !isLoading && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank()
                 ) {
                     if (isLoading) {
-                        CircularProgressIndicator(
-                            modifier = Modifier.size(20.dp),
-                            color = Color.White,
-                            strokeWidth = 2.dp
+                        LoadingSpinner(
+                            size = 20,
+                            showText = false
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Setting up account...")
+                        Text("Setting up account...", color = getTextColor())
                     } else {
                         Icon(Icons.Filled.PersonAdd, contentDescription = null)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Sign Up")
+                        Text("Sign Up", color = getTextColor())
                     }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
 
                 TextButton(onClick = onNavigateToLogin) {
-                    Text(text = "Already have an account?", color = Color.LightGray)
+                    Text(text = "Already have an account?", color = getTextColor())
                     Spacer(modifier = Modifier.width(4.dp))
-                    Text(text = "Log in here", color = Color(0xFF50A8FF))
+                    Text(text = "Log in here", color = MaterialTheme.colorScheme.primary)
                 }
 
                 errorMsg?.let {

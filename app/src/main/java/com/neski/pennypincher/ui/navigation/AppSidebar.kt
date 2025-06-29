@@ -45,6 +45,7 @@ fun AppSidebar(
         Column(modifier = Modifier.padding(vertical = 24.dp)) {
             Text(
                 text = "PennyPincher",
+                fontSize = 30.sp,
                 color = colors.primary,
                 style = MaterialTheme.typography.titleLarge,
                 modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 24.dp)
@@ -62,7 +63,7 @@ fun AppSidebar(
                             tint = colors.onSurface
                         )
                     },
-                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                 )
             }
 

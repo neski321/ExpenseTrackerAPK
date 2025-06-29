@@ -9,6 +9,7 @@ import com.neski.pennypincher.data.repository.CategoryRepository
 import kotlinx.coroutines.launch
 import java.util.*
 import androidx.compose.foundation.layout.*
+import com.neski.pennypincher.ui.theme.getTextColor
 
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -50,15 +51,15 @@ fun AddCategoryDialog(
                 },
                 enabled = name.isNotBlank()
             ) {
-                Text("Add")
+                Text("Add", color = getTextColor())
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = getTextColor())
             }
         },
-        title = { Text("Add New Category") },
+        title = { Text("Add New Category", color = getTextColor()) },
         text = {
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 OutlinedTextField(

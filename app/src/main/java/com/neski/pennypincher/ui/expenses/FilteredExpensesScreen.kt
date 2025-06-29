@@ -28,6 +28,8 @@ import com.neski.pennypincher.ui.components.EditExpenseDialog
 import androidx.compose.foundation.clickable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -136,10 +138,10 @@ fun FilteredExpensesScreen(
                     @Composable {
                         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Expenses for ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                                Text("Expenses for ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
                                 categoryPath.forEachIndexed { idx, c ->
                                     if (idx > 0) {
-                                        Text(" > ", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.titleLarge)
+                                        Text(" > ", color = getTextColor(), style = MaterialTheme.typography.titleLarge)
                                     }
                                     if (idx < categoryPath.size - 1 && onNavigateToCategory != null) {
                                         Text(
@@ -160,7 +162,7 @@ fun FilteredExpensesScreen(
                             Text(
                                 "Showing expenses recorded for this category and its sub-categories across all time.",
                                 style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                color = getTextColor(),
                                 modifier = Modifier.padding(top = 2.dp)
                             )
                         }
@@ -169,7 +171,7 @@ fun FilteredExpensesScreen(
                 month != null -> {
                     @Composable {
                         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                            Text("Expenses for $month", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("Expenses for $month", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
                             Text(
                                 "View your expenses for this period.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -182,7 +184,7 @@ fun FilteredExpensesScreen(
                 paymentMethodName != null -> {
                     @Composable {
                         Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                            Text("Expenses for $paymentMethodName", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+                            Text("Expenses for $paymentMethodName", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
                             Text(
                                 "View your expenses for this payment method.",
                                 style = MaterialTheme.typography.bodySmall,
@@ -193,7 +195,7 @@ fun FilteredExpensesScreen(
                     }
                 }
                 else -> {
-                    @Composable { Text("Filtered Expenses", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold) }
+                    @Composable { Text("Filtered Expenses", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor()) }
                 }
             }
             if (onBack != null) {
@@ -213,7 +215,9 @@ fun FilteredExpensesScreen(
     ) { innerPadding ->
         Box(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
             if (isLoading) {
-                CircularProgressIndicator()
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    LoadingSpinner(size = 80, showText = true, loadingText = "Loading filtered expenses...")
+                }
             } else if (expenses.isEmpty()) {
                 val filterType = when {
                     month != null -> "this month"
@@ -221,7 +225,7 @@ fun FilteredExpensesScreen(
                     paymentMethodName != null -> "this payment method"
                     else -> "the selected filter"
                 }
-                Text("No expenses found for $filterType.")
+                Text("No expenses found for $filterType.", color = getTextColor())
             } else {
                 LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     items(expenses, key = { it.id }) { expense ->
@@ -265,8 +269,8 @@ fun FilteredExpensesScreen(
                         showConfirmDialog = false
                         expenseToDelete = null
                     },
-                    title = { Text("Delete Expense") },
-                    text = { Text("Are you sure you want to delete this expense?") },
+                    title = { Text("Delete Expense", color = getTextColor()) },
+                    text = { Text("Are you sure you want to delete this expense?", color = getTextColor()) },
                     confirmButton = {
                         TextButton(onClick = {
                             deleteExpense(expenseToDelete!!)
@@ -284,7 +288,7 @@ fun FilteredExpensesScreen(
                                 expenseToDelete = null
                             }
                         }) {
-                            Text("Cancel")
+                            Text("Cancel", color = getTextColor())
                         }
                     }
                 )

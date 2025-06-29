@@ -28,10 +28,12 @@ import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberDismissState
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.ExpenseRow
+import com.neski.pennypincher.ui.components.LoadingSpinner
 
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -147,15 +149,17 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
             Text(
                 text = "Search & Filter Expenses",
                 style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                color = getTextColor()
             )
             Text(
                 text = "Refine your expense list using the filters below.",
                 style = MaterialTheme.typography.bodyMedium,
+                color = getTextColor()
             )
             Spacer(Modifier.height(12.dp))
             if (isLoading) {
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    CircularProgressIndicator()
+                    LoadingSpinner(size = 80, showText = true, loadingText = "Loading search results...")
                 }
                 return@Column
             }
@@ -372,6 +376,29 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
                 Text("Clear All Filters")
             }
 
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(bottom = 2.dp),
+                shape = MaterialTheme.shapes.medium,
+                //color = MaterialTheme.colorScheme.surfaceVariant,
+                tonalElevation = 1.dp,
+                //border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Date", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                    Text("Description\n/Category", modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                    Text("Payment\nMethod", modifier = Modifier.weight(1.8f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                    Text("Amount", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                    Text("Actions", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                }
+            }
+
             Spacer(Modifier.height(16.dp))
 
             LazyColumn(
@@ -429,8 +456,8 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
                 showConfirmDialog = false
                 expenseToDelete = null
             },
-            title = { Text("Delete Expense") },
-            text = { Text("Are you sure you want to delete this expense?") },
+            title = { Text("Delete Expense", color = getTextColor()) },
+            text = { Text("Are you sure you want to delete this expense?", color = getTextColor()) },
             confirmButton = {
                 TextButton(onClick = {
                     deleteExpense(expenseToDelete!!)
@@ -448,7 +475,7 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
                         expenseToDelete = null
                     }
                 }) {
-                    Text("Cancel")
+                    Text("Cancel", color = getTextColor())
                 }
             }
 
