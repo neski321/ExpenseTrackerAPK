@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.text.font.FontWeight
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -79,21 +80,31 @@ fun IncomeScreen(userId: String) {
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Income Records") }) },
         floatingActionButton = {
             FloatingActionButton(onClick = { showAddDialog = true }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Income")
             }
         },
-        snackbarHost = { SnackbarHost(snackbarHostState) }
+        snackbarHost = { SnackbarHost(snackbarHostState) },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(innerPadding)
+                .padding(12.dp)
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
             Column(modifier = Modifier.fillMaxSize()) {
+                Text(
+                    text = "Manage Income",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = "Track your earnings and keep your finances in order.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
                 if (isLoading) {
                     CircularProgressIndicator()
                 } else if (incomes.isEmpty()) {

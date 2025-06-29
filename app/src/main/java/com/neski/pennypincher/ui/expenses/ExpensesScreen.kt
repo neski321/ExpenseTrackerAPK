@@ -11,16 +11,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-//import androidx.compose.foundation.rememberScrollState
-//import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-//import androidx.compose.material3.Snackbar
-//import androidx.compose.material3.SnackbarData
 
-//import androidx.compose.material.icons.filled.Delete
-//import androidx.compose.ui.graphics.Color
-//import androidx.compose.ui.unit.dp
 import com.neski.pennypincher.data.models.Expense
 import com.neski.pennypincher.data.repository.ExpenseRepository
 import com.neski.pennypincher.ui.components.ExpenseRow
@@ -36,15 +29,14 @@ import kotlinx.coroutines.launch
 // Material 2 for swipe to dismiss only
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
-//import androidx.compose.material.DismissValue
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
 import java.util.Date
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.text.font.FontWeight
 
 @SuppressLint("SimpleDateFormat")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class,
@@ -123,22 +115,6 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
     }
 
     Scaffold(
-        topBar = {
-            if (filterMonth != null && onBack != null) {
-                TopAppBar(
-                    title = { Text("Expenses for $filterMonth") },
-                    navigationIcon = {
-                        IconButton(onClick = onBack) {
-                            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
-                        }
-                    }
-                )
-            } else {
-                TopAppBar(
-                    title = { Text("Manage Expenses") }
-                )
-            }
-        },
         snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
         floatingActionButton = {
             FloatingActionButton(
@@ -147,16 +123,27 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add New Expense")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(innerPadding)
+                .padding(12.dp)
                 .fillMaxSize()
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
+                Text(
+                    text = "Manage Expenses",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = "Track your daily spending and keep your finances in order.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
@@ -166,14 +153,36 @@ fun ExpensesScreen(userId: String, filterMonth: String? = null, onBack: (() -> U
                 } else {
                     Box(
                         modifier = Modifier
-                            .padding(innerPadding)
-                            .padding(12.dp)
                             .fillMaxSize()
                             .pullRefresh(pullRefreshState)
                     ) {
                         Column(
                             modifier = Modifier.fillMaxSize()
                         ) {
+                            // Table header row
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 2.dp),
+                                shape = MaterialTheme.shapes.medium,
+                                //color = MaterialTheme.colorScheme.surfaceVariant,
+                                tonalElevation = 1.dp,
+                                //border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Text("Date", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+                                    Text("Description\n/Category", modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelMedium)
+                                    Text("Payment\nMethod", modifier = Modifier.weight(1.8f), style = MaterialTheme.typography.labelMedium)
+                                    Text("Amount", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelMedium)
+                                    Text("Actions", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+                                }
+                            }
+                            Spacer(Modifier.height(8.dp))
                             LazyColumn(
                                 modifier = Modifier
                                     .fillMaxSize()

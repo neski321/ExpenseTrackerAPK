@@ -21,11 +21,12 @@ import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditPaymentMethodDialog
-import androidx.compose.material.icons.filled.Delete
+//import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.AddPaymentMethodDialog
 
-@OptIn(ExperimentalMaterialApi::class)
+@OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PaymentMethodsScreen(
     userId: String,
@@ -87,20 +88,28 @@ fun PaymentMethodsScreen(
             }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Payment Method")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(innerPadding)
-                .padding(16.dp)
+                .padding(12.dp )
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
-                Text("Payment Methods", style = MaterialTheme.typography.headlineSmall)
-                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "Manage Payment Methods",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = "Add, edit, ot remove your payment methods",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
@@ -145,12 +154,6 @@ fun PaymentMethodsScreen(
                                                 showEditDialog = true
                                             }) {
                                                 Icon(Icons.Default.Edit, contentDescription = "Edit")
-                                            }
-                                            IconButton(onClick = {
-                                                methodToDelete = method
-                                                showConfirmDialog = true
-                                            }) {
-                                                Icon(Icons.Default.Delete, contentDescription = "Delete")
                                             }
                                         }
                                     }

@@ -25,6 +25,7 @@ import androidx.compose.material.rememberDismissState
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.text.font.FontWeight
 
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
@@ -89,7 +90,6 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     }
 
     Scaffold(
-        topBar = { TopAppBar(title = { Text("Categories") }) },
         floatingActionButton = {
             FloatingActionButton(
                 onClick = { showDialog = true },
@@ -97,17 +97,28 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
             ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Category")
             }
-        }
+        },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
     ) { innerPadding ->
         Box(
             modifier = Modifier
                 .padding(innerPadding)
+                .padding(12.dp)
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
             Column(
                 modifier = Modifier.fillMaxSize()
             ) {
+                Text(
+                    text = "Manage Categories",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = "Organize your expenses by creating and managing categories and sub-categories.",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(Modifier.height(12.dp))
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()

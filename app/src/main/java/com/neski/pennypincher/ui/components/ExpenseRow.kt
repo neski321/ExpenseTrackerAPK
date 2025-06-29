@@ -44,7 +44,7 @@ fun ExpenseRow(
 
             Column(modifier = Modifier.weight(1f)) {
                 Text(text = expense.description, style = MaterialTheme.typography.bodyMedium)
-                Spacer(modifier = Modifier.height(4.dp))
+                Spacer(modifier = Modifier.height(6.dp))
 
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -55,7 +55,7 @@ fun ExpenseRow(
                                 RoundedCornerShape(12.dp)
                             )
                             .clickable { onCategoryClick() }
-                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                            .padding(horizontal = 6.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall.copy(
                             color = MaterialTheme.colorScheme.primary
                         )
@@ -76,13 +76,13 @@ fun ExpenseRow(
             Text(
                 text = paymentMethodName,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 8.dp)
+                modifier = Modifier.padding(horizontal = 18.dp)
             )
 
             Text(
                 text = "$${"%.2f".format(expense.amount)}",
                 fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(80.dp),
+                modifier = Modifier.width(100.dp),
                 style = MaterialTheme.typography.bodyMedium
             )
 

@@ -8,6 +8,7 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,6 +26,7 @@ import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.rememberDismissState
+import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.ExpenseRow
 
 import java.time.Instant
@@ -80,7 +82,7 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
         scope.launch {
             try {
                 isLoading = true
-                allExpenses = ExpenseRepository.getAllExpenses(userId)
+                allExpenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
                 allCategories = CategoryRepository.getAllCategories(userId)
                 allPaymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
             } catch (e: Exception) {
@@ -91,9 +93,20 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
         }
     }
 
+    // Helper to get all descendant category IDs (including the selected one)
+    fun getAllDescendantCategoryIds(categoryId: String, categories: List<Category>): Set<String> {
+        val directChildren = categories.filter { it.parentId == categoryId }
+        return directChildren.fold(mutableSetOf(categoryId)) { acc, child ->
+            acc.addAll(getAllDescendantCategoryIds(child.id, categories))
+            acc
+        }
+    }
+
     val filteredExpenses = allExpenses.filter { expense ->
         val matchesText = query.isBlank() || expense.description.contains(query, ignoreCase = true)
-        val matchesCat = selectedCategory == null || selectedCategory == expense.categoryId
+        val selectedCategoryValue = selectedCategory
+        val categoryIdsToMatch = if (selectedCategoryValue == null) null else getAllDescendantCategoryIds(selectedCategoryValue, allCategories)
+        val matchesCat = categoryIdsToMatch == null || categoryIdsToMatch.contains(expense.categoryId)
         val matchesPay = selectedPaymentMethodId == null || expense.paymentMethodId == selectedPaymentMethodId
 
         val matchesAmount = runCatching {
@@ -123,7 +136,8 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
     }
 
     Scaffold(
-        // Removed topBar
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -131,13 +145,16 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
                 .padding(16.dp)
         ) {
             Text(
-                "Search Expenses",
-                style = MaterialTheme.typography.headlineSmall,
-                modifier = Modifier.padding(top = 16.dp, bottom = 8.dp)
+                text = "Search & Filter Expenses",
+                style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
             )
-
+            Text(
+                text = "Refine your expense list using the filters below.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            Spacer(Modifier.height(12.dp))
             if (isLoading) {
-                Box(Modifier.fillMaxSize(), contentAlignment = androidx.compose.ui.Alignment.Center) {
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator()
                 }
                 return@Column
@@ -446,11 +463,13 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
                 showEditDialog = false
                 expenseToEdit = null
             },
-            onUpdate = {
+            onUpdate = { updatedExpense ->
                 showEditDialog = false
                 expenseToEdit = null
                 scope.launch {
-                    allExpenses = ExpenseRepository.getAllExpenses(userId)
+                    ExpenseRepository.updateExpense(userId, updatedExpense)
+                    allExpenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
+                    snackbarHostState.showSnackbar("Expense updated")
                 }
             }
         )
