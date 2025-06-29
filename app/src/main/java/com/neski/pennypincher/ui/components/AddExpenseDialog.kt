@@ -22,6 +22,7 @@ import com.neski.pennypincher.data.repository.CurrencyRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -154,18 +155,18 @@ fun AddExpenseDialog(
                 },
                 enabled = description.isNotBlank() && amount.isNotBlank() && category.isNotBlank()
             ) {
-                Text("Add Expense")
+                Text("Add Expense", color = getTextColor())
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Cancel")
+                Text("Cancel", color = getTextColor())
             }
         },
         title = {
             Column {
-                Text("Add New Expense", style = MaterialTheme.typography.headlineSmall)
-                Text("Enter the details of your new expense.", style = MaterialTheme.typography.bodySmall)
+                Text("Add New Expense", style = MaterialTheme.typography.headlineSmall, color = getTextColor())
+                Text("Enter the details of your new expense.", style = MaterialTheme.typography.bodySmall, color = getTextColor())
             }
         },
         text = {

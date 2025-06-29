@@ -26,6 +26,7 @@ import com.neski.pennypincher.data.models.Currency
 import com.neski.pennypincher.data.repository.CategoryRepository
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
 import com.neski.pennypincher.data.repository.CurrencyRepository
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -117,11 +118,11 @@ fun EditExpenseDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Edit Expense", style = MaterialTheme.typography.titleLarge)
+                        Text("Edit Expense", style = MaterialTheme.typography.titleLarge, color = getTextColor())
                         Text(
                             "Update the details of your expense.",
                             style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                            color = getTextColor()
                         )
                     }
                     IconButton(onClick = onDismiss) {

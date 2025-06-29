@@ -23,6 +23,7 @@ import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.AddIncomeSourceDialog
 import com.neski.pennypincher.ui.components.EditIncomeSourceDialog
+import com.neski.pennypincher.ui.components.LoadingSpinner
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +84,9 @@ fun IncomeSourcesScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 showAddDialog = true
-            }) {
+            },
+                containerColor = MaterialTheme.colorScheme.primary
+                ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Income Source")
             }
         },
@@ -112,7 +115,7 @@ fun IncomeSourcesScreen(
 
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading income sources...")
                     }
                 } else if (sources.isEmpty()) {
                     Text("No income sources found.")
@@ -181,7 +184,10 @@ fun IncomeSourcesScreen(
             onDismiss = { showEditDialog = false },
             onUpdate = { newName ->
                 updateSource(sourceToEdit!!, newName)
-                showEditDialog = false
+                scope.launch {
+                    sources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
+                    showEditDialog = false
+                }
             }
         )
     }

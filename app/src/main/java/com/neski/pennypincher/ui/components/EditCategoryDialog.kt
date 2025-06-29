@@ -12,6 +12,7 @@ import com.neski.pennypincher.data.repository.CategoryRepository
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -41,8 +42,8 @@ fun EditCategoryDialog(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Column {
-                        Text("Edit Category", style = MaterialTheme.typography.titleLarge)
-                        Text("Update the details of this category.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Text("Edit Category", style = MaterialTheme.typography.titleLarge, color = getTextColor())
+                        Text("Update the details of this category.", style = MaterialTheme.typography.bodySmall, color = getTextColor())
                     }
                     IconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = "Close")

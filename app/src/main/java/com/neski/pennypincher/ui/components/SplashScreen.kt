@@ -1,11 +1,10 @@
 package com.neski.pennypincher.ui.components
 
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -22,6 +21,18 @@ fun SplashScreen() {
         Brush.verticalGradient(listOf(colorScheme.surface, colorScheme.background))
     }
 
+    // Create infinite rotation animation
+    val infiniteTransition = rememberInfiniteTransition(label = "splash_rotation")
+    val rotation by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 360f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(2000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "logo_rotation"
+    )
+
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -31,34 +42,19 @@ fun SplashScreen() {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Icon(
-                imageVector = Icons.Filled.AttachMoney,
-                contentDescription = "PennyPincher Icon",
-                tint = colorScheme.primary,
-                modifier = Modifier.size(80.dp)
+            // Use the new LoadingSpinner component
+            LoadingSpinner(
+                size = 120,
+                showText = true,
+                loadingText = "Loading..."
             )
             
-            Spacer(modifier = Modifier.height(16.dp))
+            Spacer(modifier = Modifier.height(24.dp))
             
             Text(
                 "PennyPincher",
                 style = MaterialTheme.typography.headlineMedium,
                 color = colorScheme.primary
-            )
-            
-            Spacer(modifier = Modifier.height(8.dp))
-            
-            Text(
-                "Loading...",
-                style = MaterialTheme.typography.bodyMedium,
-                color = colorScheme.onSurfaceVariant
-            )
-            
-            Spacer(modifier = Modifier.height(24.dp))
-            
-            CircularProgressIndicator(
-                color = colorScheme.primary,
-                modifier = Modifier.size(32.dp)
             )
         }
     }

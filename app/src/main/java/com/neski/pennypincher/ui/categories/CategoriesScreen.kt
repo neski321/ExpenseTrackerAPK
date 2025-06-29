@@ -26,6 +26,8 @@ import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
 import androidx.compose.ui.text.font.FontWeight
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
@@ -113,15 +115,17 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                 Text(
                     text = "Manage Categories",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = getTextColor()
                 )
                 Text(
                     text = "Organize your expenses by creating and managing categories and sub-categories.",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = getTextColor()
                 )
                 Spacer(Modifier.height(12.dp))
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading categories...")
                     }
                 } else {
                     LazyColumn(
@@ -135,7 +139,8 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                                     Text(
                                         text = parentName,
                                         style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(vertical = 4.dp)
+                                        modifier = Modifier.padding(vertical = 4.dp),
+                                        color = getTextColor()
                                     )
                                 }
 
@@ -191,19 +196,12 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     if (showDialog) {
         AddCategoryDialog(
             userId = userId,
-            onDismiss = { showDialog = false },
             categories = categories,
+            onDismiss = { showDialog = false },
             onAdded = {
-                showDialog = false
-            // Refresh after add
-            scope.launch {
-                val refreshed = CategoryRepository.getAllCategories(userId)
-                categories = refreshed.sortedBy { it.name }
-                groupedCategories = refreshed
-                    .sortedBy { it.name }
-                    .groupBy { parent ->
-                        refreshed.find { it.id == parent.parentId }?.name ?: "Parent"
-                    }
+                scope.launch {
+                    categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                    showDialog = false
                 }
             }
         )
@@ -214,21 +212,11 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
             userId = userId,
             category = categoryToEdit!!,
             allCategories = categories,
-            onDismiss = {
-                showEditDialog = false
-                categoryToEdit = null
-            },
+            onDismiss = { showEditDialog = false },
             onUpdated = {
-                showEditDialog = false
-                categoryToEdit = null
                 scope.launch {
-                    val refreshed = CategoryRepository.getAllCategories(userId)
-                    categories = refreshed.sortedBy { it.name }
-                    groupedCategories = refreshed
-                        .sortedBy { it.name }
-                        .groupBy { parent ->
-                            refreshed.find { it.id == parent.parentId }?.name ?: "Uncategorized"
-                        }
+                    categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                    showEditDialog = false
                 }
             }
         )
@@ -241,8 +229,8 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                 showConfirmDialog = false
                 categoryToDelete = null
             },
-            title = { Text("Delete Category") },
-            text = { Text("Are you sure you want to delete this category?") },
+            title = { Text("Delete Category", color = getTextColor()) },
+            text = { Text("Are you sure you want to delete this category?", color = getTextColor()) },
             confirmButton = {
                 TextButton(onClick = {
                     deleteCategory(categoryToDelete!!)
@@ -260,7 +248,7 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                         categoryToDelete = null
                     }
                 }) {
-                    Text("Cancel")
+                    Text("Cancel", color = getTextColor())
                 }
             }
         )

@@ -30,6 +30,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.core.graphics.toColorInt
+import com.neski.pennypincher.ui.components.LoadingSpinner
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -89,7 +90,7 @@ fun DashboardScreen(
     ) {
         if (isLoading) {
             Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator()
+                LoadingSpinner(size = 80, showText = true, loadingText = "Loading dashboard...")
             }
         } else {
             val scrollState = rememberScrollState()

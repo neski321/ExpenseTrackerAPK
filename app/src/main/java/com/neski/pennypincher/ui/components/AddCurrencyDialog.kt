@@ -9,6 +9,7 @@ import com.neski.pennypincher.data.models.Currency
 import com.neski.pennypincher.data.repository.CurrencyRepository
 import kotlinx.coroutines.launch
 import java.util.*
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -29,7 +30,7 @@ fun AddCurrencyDialog(
         confirmButton = {},
         dismissButton = {},
         title = {
-            Text("Add New Currency", style = MaterialTheme.typography.headlineSmall)
+            Text("Add New Currency", style = MaterialTheme.typography.headlineSmall, color = getTextColor())
         },
         text = {
             Column(
@@ -37,7 +38,7 @@ fun AddCurrencyDialog(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Currency Name", style = MaterialTheme.typography.labelMedium)
+                    Text("Currency Name", style = MaterialTheme.typography.labelMedium, color = getTextColor())
                     OutlinedTextField(
                         value = name,
                         onValueChange = {
@@ -51,7 +52,7 @@ fun AddCurrencyDialog(
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Currency Code (3 letters)", style = MaterialTheme.typography.labelMedium)
+                    Text("Currency Code (3 letters)", style = MaterialTheme.typography.labelMedium, color = getTextColor())
                     OutlinedTextField(
                         value = code,
                         onValueChange = {
@@ -65,7 +66,7 @@ fun AddCurrencyDialog(
                 }
 
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    Text("Currency Symbol", style = MaterialTheme.typography.labelMedium)
+                    Text("Currency Symbol", style = MaterialTheme.typography.labelMedium, color = getTextColor())
                     OutlinedTextField(
                         value = symbol,
                         onValueChange = {

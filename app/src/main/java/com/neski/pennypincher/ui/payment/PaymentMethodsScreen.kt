@@ -25,6 +25,8 @@ import com.neski.pennypincher.ui.components.EditPaymentMethodDialog
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.AddPaymentMethodDialog
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -85,7 +87,9 @@ fun PaymentMethodsScreen(
         floatingActionButton = {
             FloatingActionButton(onClick = {
                 showAddDialog = true
-            }) {
+            },
+                containerColor = MaterialTheme.colorScheme.primary
+                ) {
                 Icon(Icons.Default.Add, contentDescription = "Add Payment Method")
             }
         },
@@ -104,19 +108,21 @@ fun PaymentMethodsScreen(
                 Text(
                     text = "Manage Payment Methods",
                     style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = getTextColor()
                 )
                 Text(
                     text = "Add, edit, ot remove your payment methods",
                     style = MaterialTheme.typography.bodyMedium,
+                    color = getTextColor()
                 )
                 Spacer(modifier = Modifier.height(12.dp))
 
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        CircularProgressIndicator()
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading payment methods...")
                     }
                 } else if (methods.isEmpty()) {
-                    Text("No payment methods found.")
+                    Text("No payment methods found.", color = getTextColor())
                 } else {
                     methods.forEach { method ->
                         val dismissState = dismissStates.getOrPut(method.id) { rememberDismissState() }
@@ -179,7 +185,10 @@ fun PaymentMethodsScreen(
             onDismiss = { showEditDialog = false },
             onUpdate = { newName ->
                 updateMethod(methodToEdit!!, newName)
-                showEditDialog = false
+                scope.launch {
+                    methods = PaymentMethodRepository.getAllPaymentMethods(userId, forceRefresh = true)
+                    showEditDialog = false
+                }
             }
         )
     }
@@ -190,8 +199,8 @@ fun PaymentMethodsScreen(
                 //dismissStates[methodToDelete?.id]?.reset()
                 methodToDelete = null
             },
-            title = { Text("Delete Payment Method") },
-            text = { Text("Are you sure you want to delete this payment method?") },
+            title = { Text("Delete Payment Method", color = getTextColor()) },
+            text = { Text("Are you sure you want to delete this payment method?", color = getTextColor()) },
             confirmButton = {
                 TextButton(onClick = {
                     deleteMethod(methodToDelete!!)
@@ -209,7 +218,7 @@ fun PaymentMethodsScreen(
                         methodToDelete = null
                     }
                 }) {
-                    Text("Cancel")
+                    Text("Cancel", color = getTextColor())
                 }
             }
         )
