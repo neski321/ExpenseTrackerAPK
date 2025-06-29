@@ -31,6 +31,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.core.graphics.toColorInt
 import com.neski.pennypincher.ui.components.LoadingSpinner
+import java.util.UUID
+import java.util.Date
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
@@ -105,7 +107,25 @@ fun DashboardScreen(
                     AddExpenseDialog(
                         userId = userId,
                         onDismiss = { showAddExpenseDialog = false },
-                        onAdd = { _, _, _, _, _, _, _, _ -> showAddExpenseDialog = false }
+                        onAdd = { description, amount, currency, date, category, paymentMethod, isSubscription, nextDueDate ->
+                            scope.launch {
+                                val newExpense = Expense(
+                                    id = UUID.randomUUID().toString(),
+                                    description = description,
+                                    amount = amount,
+                                    currencyId = currency,
+                                    date = date,
+                                    categoryId = category,
+                                    paymentMethodId = paymentMethod,
+                                    isSubscription = isSubscription,
+                                    nextDueDate = nextDueDate ?: Date()
+                                )
+                                ExpenseRepository.addExpense(userId, newExpense)
+                                // Force refresh all dashboard data
+                                loadData(forceRefresh = true)
+                                showAddExpenseDialog = false
+                            }
+                        }
                     )
                 }
                 Card(
