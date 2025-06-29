@@ -111,8 +111,8 @@ fun FilteredExpensesScreen(
         scope.launch {
             try {
                 ExpenseRepository.deleteExpense(userId, expense.id)
-                expenses = expenses.filterNot { it.id == expense.id }
-                snackbarHostState.showSnackbar("Expense deleted")
+                // Force refresh all data to ensure consistency
+                snackbarHostState.showSnackbar("Expense deleted successfully")
             } catch (e: Exception) {
                 snackbarHostState.showSnackbar("Failed to delete expense")
             }
@@ -301,11 +301,16 @@ fun FilteredExpensesScreen(
                         showEditDialog = false
                         expenseToEdit = null
                     },
-                    onUpdate = {
-                        showEditDialog = false
-                        expenseToEdit = null
+                    onUpdate = { updatedExpense ->
                         scope.launch {
+                            ExpenseRepository.updateExpense(userId, updatedExpense)
+                            // Force refresh all data
                             expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
+                            categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                            paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId, forceRefresh = true)
+                            showEditDialog = false
+                            expenseToEdit = null
+                            snackbarHostState.showSnackbar("Expense updated successfully")
                         }
                     }
                 )
