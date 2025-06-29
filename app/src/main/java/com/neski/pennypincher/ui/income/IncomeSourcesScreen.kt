@@ -2,8 +2,6 @@ package com.neski.pennypincher.ui.income
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Edit
@@ -18,31 +16,34 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
-import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.rememberDismissState
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
-//import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontWeight
+import com.neski.pennypincher.ui.components.AddIncomeSourceDialog
+import com.neski.pennypincher.ui.components.EditIncomeSourceDialog
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
-fun IncomeSourcesScreen(userId: String) {
+fun IncomeSourcesScreen(
+    userId: String,
+    onIncomeSourceClick: (String, String) -> Unit = { _, _ -> }
+) {
     val scope = rememberCoroutineScope()
     var sources by remember { mutableStateOf<List<IncomeSource>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var isRefreshing by remember { mutableStateOf(false) }
-    var showAddDialog by remember { mutableStateOf(false) }
     var showEditDialog by remember { mutableStateOf(false) }
     var sourceToEdit by remember { mutableStateOf<IncomeSource?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
     var sourceToDelete by remember { mutableStateOf<IncomeSource?>(null) }
+    var showAddDialog by remember { mutableStateOf(false) }
     val snackbarHostState = remember { SnackbarHostState() }
     val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
 
-    fun loadSources() {
+    LaunchedEffect(userId) {
         scope.launch {
-            isLoading = true
             sources = IncomeSourceRepository.getAllIncomeSources(userId)
             isLoading = false
         }
@@ -59,9 +60,30 @@ fun IncomeSourcesScreen(userId: String) {
         }
     )
 
+    fun deleteSource(source: IncomeSource) {
+        scope.launch {
+            try {
+                IncomeSourceRepository.deleteIncomeSource(userId, source.id)
+                sources = sources.filterNot { it.id == source.id }
+            } catch (e: Exception) {}
+        }
+    }
+
+    fun updateSource(source: IncomeSource, newName: String) {
+        scope.launch {
+            try {
+                val updated = source.copy(name = newName)
+                IncomeSourceRepository.updateIncomeSource(userId, updated)
+                sources = sources.map { if (it.id == source.id) updated else it }
+            } catch (e: Exception) {}
+        }
+    }
+
     Scaffold(
         floatingActionButton = {
-            FloatingActionButton(onClick = { showAddDialog = true }) {
+            FloatingActionButton(onClick = {
+                showAddDialog = true
+            }) {
                 Icon(Icons.Default.Add, contentDescription = "Add Income Source")
             }
         },
@@ -75,15 +97,27 @@ fun IncomeSourcesScreen(userId: String) {
                 .fillMaxSize()
                 .pullRefresh(pullRefreshState)
         ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                Text(
+                    text = "Manage Income Sources",
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = "Add, edit, or remove your income sources",
+                    style = MaterialTheme.typography.bodyMedium,
+                )
+                Spacer(modifier = Modifier.height(12.dp))
 
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else {
-                LazyColumn(
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                    modifier = Modifier.fillMaxSize()
-                ) {
-                    items(sources, key = { it.id }) { source ->
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                } else if (sources.isEmpty()) {
+                    Text("No income sources found.")
+                } else {
+                    sources.forEach { source ->
                         val dismissState = dismissStates.getOrPut(source.id) { rememberDismissState() }
                         LaunchedEffect(dismissState.currentValue) {
                             if (
@@ -96,26 +130,30 @@ fun IncomeSourcesScreen(userId: String) {
                         }
                         SwipeToDismiss(
                             state = dismissState,
-                            directions = setOf(DismissDirection.EndToStart, DismissDirection.StartToEnd),
+                            directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
                             background = {},
                             dismissContent = {
                                 Card(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { sourceToEdit = source; showEditDialog = true },
-                                    elevation = CardDefaults.cardElevation(2.dp)
+                                        .padding(bottom = 8.dp)
+                                        .clickable { onIncomeSourceClick(source.id, source.name) }
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .fillMaxWidth()
-                                            .padding(16.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                            .padding(12.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.SpaceBetween
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
-                                            Text(source.name, style = MaterialTheme.typography.titleMedium)
+                                            Text(source.name, style = MaterialTheme.typography.bodyLarge)
                                             Text(source.type, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                        IconButton(onClick = { sourceToEdit = source; showEditDialog = true }) {
+                                        IconButton(onClick = {
+                                            sourceToEdit = source
+                                            showEditDialog = true
+                                        }) {
                                             Icon(Icons.Default.Edit, contentDescription = "Edit")
                                         }
                                     }
@@ -136,49 +174,31 @@ fun IncomeSourcesScreen(userId: String) {
         }
     }
 
-    if (showAddDialog) {
-        AddIncomeSourceDialog(
-            userId = userId,
-            onDismiss = { showAddDialog = false },
-            onAdd = {
-                showAddDialog = false
-                loadSources()
-            }
-        )
-    }
     if (showEditDialog && sourceToEdit != null) {
         EditIncomeSourceDialog(
             userId = userId,
             source = sourceToEdit!!,
-            onDismiss = {
+            onDismiss = { showEditDialog = false },
+            onUpdate = { newName ->
+                updateSource(sourceToEdit!!, newName)
                 showEditDialog = false
-                sourceToEdit = null
-            },
-            onUpdate = {
-                showEditDialog = false
-                sourceToEdit = null
-                loadSources()
             }
         )
     }
+
     if (showConfirmDialog && sourceToDelete != null) {
         AlertDialog(
             onDismissRequest = {
                 showConfirmDialog = false
                 sourceToDelete = null
-                //dismissStates[sourceToDelete?.id]?.reset()
             },
             title = { Text("Delete Income Source") },
             text = { Text("Are you sure you want to delete this income source?") },
             confirmButton = {
                 TextButton(onClick = {
-                    scope.launch {
-                        IncomeSourceRepository.deleteIncomeSource(userId, sourceToDelete!!.id)
-                        showConfirmDialog = false
-                        sourceToDelete = null
-                        loadSources()
-                        snackbarHostState.showSnackbar("Income source deleted")
-                    }
+                    deleteSource(sourceToDelete!!)
+                    showConfirmDialog = false
+                    sourceToDelete = null
                 }) {
                     Text("Delete", color = MaterialTheme.colorScheme.error)
                 }
@@ -196,101 +216,17 @@ fun IncomeSourcesScreen(userId: String) {
             }
         )
     }
-}
 
-@Composable
-fun AddIncomeSourceDialog(userId: String, onDismiss: () -> Unit, onAdd: () -> Unit) {
-    var name by remember { mutableStateOf("") }
-    val scope = rememberCoroutineScope()
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            tonalElevation = 8.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Add New Income Source", style = MaterialTheme.typography.titleLarge)
-                        Text("Create a new source for your income.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Source Name") },
-                    placeholder = { Text("e.g., Salary, Freelance Project") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        scope.launch {
-                            IncomeSourceRepository.addIncomeSource(userId, IncomeSource(name = name))
-                            onAdd()
-                        }
-                    },
-                    enabled = name.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Add Source")
+    if (showAddDialog) {
+        AddIncomeSourceDialog(
+            userId = userId,
+            onDismiss = { showAddDialog = false },
+            onAdd = {
+                scope.launch {
+                    sources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
+                    showAddDialog = false
                 }
             }
-        }
-    }
-}
-
-@Composable
-fun EditIncomeSourceDialog(userId: String, source: IncomeSource, onDismiss: () -> Unit, onUpdate: () -> Unit) {
-    var name by remember { mutableStateOf(source.name) }
-    val scope = rememberCoroutineScope()
-    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
-        Surface(
-            shape = MaterialTheme.shapes.medium,
-            tonalElevation = 8.dp
-        ) {
-            Column(modifier = Modifier.padding(24.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column {
-                        Text("Edit Income Source", style = MaterialTheme.typography.titleLarge)
-                        Text("Update the details of this income source.", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    }
-                    IconButton(onClick = onDismiss) {
-                        Icon(Icons.Default.Close, contentDescription = "Close")
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-                OutlinedTextField(
-                    value = name,
-                    onValueChange = { name = it },
-                    label = { Text("Source Name") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-                Spacer(modifier = Modifier.height(24.dp))
-                Button(
-                    onClick = {
-                        scope.launch {
-                            IncomeSourceRepository.updateIncomeSource(userId, source.copy(name = name))
-                            onUpdate()
-                        }
-                    },
-                    enabled = name.isNotBlank(),
-                    modifier = Modifier.fillMaxWidth()
-                ) {
-                    Text("Update Source")
-                }
-            }
-        }
+        )
     }
 } 

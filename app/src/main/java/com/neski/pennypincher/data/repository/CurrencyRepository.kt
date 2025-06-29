@@ -6,8 +6,14 @@ import kotlinx.coroutines.tasks.await
 
 object CurrencyRepository {
     private val db = FirebaseFirestore.getInstance()
+    private var cachedCurrencies: List<Currency>? = null
+    private var cachedCurrenciesUserId: String? = null
 
-    suspend fun getAllCurrencies(userId: String, forceRefresh: Boolean): List<Currency> {
+    suspend fun getAllCurrencies(userId: String, forceRefresh: Boolean = false): List<Currency> {
+        if (!forceRefresh && cachedCurrencies != null && cachedCurrenciesUserId == userId) {
+            return cachedCurrencies!!
+        }
+        
         return try {
             val snapshot = db.collection("users")
                 .document(userId)
@@ -15,9 +21,13 @@ object CurrencyRepository {
                 .get()
                 .await()
 
-            snapshot.documents.mapNotNull { doc ->
+            val list = snapshot.documents.mapNotNull { doc ->
                 doc.toObject(Currency::class.java)?.copy(id = doc.id)
             }
+            
+            cachedCurrencies = list
+            cachedCurrenciesUserId = userId
+            list
         } catch (e: Exception) {
             emptyList()
         }
@@ -30,6 +40,10 @@ object CurrencyRepository {
             .document(currency.id)
             .set(currency)
             .await()
+        
+        // Clear cache
+        cachedCurrencies = null
+        cachedCurrenciesUserId = null
     }
 
     suspend fun updateCurrency(userId: String, currency: Currency) {
@@ -39,6 +53,10 @@ object CurrencyRepository {
             .document(currency.id)
             .set(currency)
             .await()
+        
+        // Clear cache
+        cachedCurrencies = null
+        cachedCurrenciesUserId = null
     }
 
     suspend fun deleteCurrency(userId: String, currencyId: String) {
@@ -48,5 +66,9 @@ object CurrencyRepository {
             .document(currencyId)
             .delete()
             .await()
+        
+        // Clear cache
+        cachedCurrencies = null
+        cachedCurrenciesUserId = null
     }
 }

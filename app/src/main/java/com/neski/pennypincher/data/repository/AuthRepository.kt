@@ -50,8 +50,15 @@ object AuthRepository {
         }
     }
 
-
     fun signOut() {
-        auth.signOut()
+        SessionManager.signOut()
+    }
+    
+    fun isUserLoggedIn(): Boolean {
+        return SessionManager.isSessionValid()
+    }
+    
+    fun getCurrentUserId(): String? {
+        return SessionManager.getCurrentUserId()
     }
 }

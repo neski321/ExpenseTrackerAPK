@@ -6,16 +6,26 @@ import kotlinx.coroutines.tasks.await
 
 object IncomeSourceRepository {
     private val firestore = FirebaseFirestore.getInstance()
+    private var cachedSources: List<IncomeSource>? = null
+    private var cachedSourcesUserId: String? = null
 
-    suspend fun getAllIncomeSources(userId: String): List<IncomeSource> {
+    suspend fun getAllIncomeSources(userId: String, forceRefresh: Boolean = false): List<IncomeSource> {
+        if (!forceRefresh && cachedSources != null && cachedSourcesUserId == userId) {
+            return cachedSources!!
+        }
+        
         return try {
-            firestore.collection("users")
+            val list = firestore.collection("users")
                 .document(userId)
                 .collection("incomeSources")
                 .get()
                 .await()
                 .documents
                 .mapNotNull { it.toObject(IncomeSource::class.java)?.copy(id = it.id) }
+            
+            cachedSources = list
+            cachedSourcesUserId = userId
+            list
         } catch (e: Exception) {
             emptyList()
         }
@@ -27,6 +37,10 @@ object IncomeSourceRepository {
             .collection("incomeSources")
             .add(source)
             .await()
+        
+        // Clear cache
+        cachedSources = null
+        cachedSourcesUserId = null
     }
 
     suspend fun updateIncomeSource(userId: String, source: IncomeSource) {
@@ -37,6 +51,10 @@ object IncomeSourceRepository {
                 .document(source.id)
                 .set(source)
                 .await()
+            
+            // Clear cache
+            cachedSources = null
+            cachedSourcesUserId = null
         }
     }
 
@@ -47,5 +65,9 @@ object IncomeSourceRepository {
             .document(sourceId)
             .delete()
             .await()
+        
+        // Clear cache
+        cachedSources = null
+        cachedSourcesUserId = null
     }
 }

@@ -23,6 +23,7 @@ import android.widget.Toast
 import androidx.compose.ui.platform.LocalContext
 
 import com.neski.pennypincher.data.repository.AuthRepository
+import com.neski.pennypincher.data.repository.UserServiceRepository
 import kotlinx.coroutines.launch
 
 @Composable
@@ -34,6 +35,7 @@ fun SignupScreen(onSignupSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
     var confirmPassword by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
 
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
     val bgGradient = if (isLight) {
@@ -135,25 +137,49 @@ fun SignupScreen(onSignupSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
                                 return@launch
                             }
 
-                            val result = AuthRepository.signUp(email, password)
-                            result
-                                .onSuccess {
-                                    Toast.makeText(context, "Signup successful!", Toast.LENGTH_SHORT).show()
-                                    onSignupSuccess()
-                                }
-                                .onFailure {
-                                    val msg = it.message ?: "Signup failed"
-                                    errorMsg = msg
-                                    Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
-                                }
+                            isLoading = true
+                            try {
+                                val result = AuthRepository.signUp(email, password)
+                                result
+                                    .onSuccess { user ->
+                                        // Seed default data for the new user
+                                        val seedResult = UserServiceRepository.seedDefaultUserData(user.uid)
+                                        seedResult.onSuccess {
+                                            Toast.makeText(context, "Signup successful! Default data has been set up.", Toast.LENGTH_SHORT).show()
+                                            onSignupSuccess()
+                                        }.onFailure { seedError ->
+                                            // Still proceed with signup even if seeding fails
+                                            Toast.makeText(context, "Signup successful! Some default data may not have been set up.", Toast.LENGTH_SHORT).show()
+                                            onSignupSuccess()
+                                        }
+                                    }
+                                    .onFailure {
+                                        val msg = it.message ?: "Signup failed"
+                                        errorMsg = msg
+                                        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show()
+                                    }
+                            } finally {
+                                isLoading = false
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF50A8FF))
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF50A8FF)),
+                    enabled = !isLoading && email.isNotBlank() && password.isNotBlank() && confirmPassword.isNotBlank()
                 ) {
-                    Icon(Icons.Filled.PersonAdd, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sign Up")
+                    if (isLoading) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(20.dp),
+                            color = Color.White,
+                            strokeWidth = 2.dp
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Setting up account...")
+                    } else {
+                        Icon(Icons.Filled.PersonAdd, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Sign Up")
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))

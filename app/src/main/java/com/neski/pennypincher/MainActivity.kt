@@ -9,6 +9,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
 import com.neski.pennypincher.ui.auth.LoginScreen
@@ -19,37 +20,58 @@ import com.neski.pennypincher.ui.navigation.AppSidebar
 import com.neski.pennypincher.ui.theme.PennyPincherTheme
 import com.neski.pennypincher.ui.welcome.WelcomeScreen
 import com.neski.pennypincher.data.repository.AuthRepository
+import com.neski.pennypincher.data.repository.SessionManager
 import com.neski.pennypincher.ui.categories.CategoriesScreen
 import com.neski.pennypincher.ui.expenses.SearchExpensesScreen
-import com.google.firebase.auth.FirebaseAuth
 import com.neski.pennypincher.ui.income.IncomeScreen
 import com.neski.pennypincher.ui.payment.PaymentMethodsScreen
 import com.neski.pennypincher.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 import com.neski.pennypincher.ui.expenses.FilteredExpensesScreen
 import com.neski.pennypincher.ui.income.IncomeSourcesScreen
+import com.neski.pennypincher.ui.components.SplashScreen
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
     @OptIn(ExperimentalMaterial3Api::class)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        
+        // Initialize SessionManager
+        SessionManager.initialize(this)
 
         setContent {
-            var selectedRoute by remember { mutableStateOf("welcome") } // Start on welcome screen
+            var selectedRoute by remember { mutableStateOf("loading") } // Start with loading
             var isDarkTheme by remember { mutableStateOf(false) }
             val drawerState = rememberDrawerState(DrawerValue.Closed)
             val scope = rememberCoroutineScope()
 
+            // Observe authentication state
+            val isLoggedIn by SessionManager.isLoggedIn.collectAsState()
+            val currentUser by SessionManager.currentUser.collectAsState()
+
             // Firebase user ID
-            val userId = FirebaseAuth.getInstance().currentUser?.uid ?: ""
+            val userId = currentUser?.uid ?: ""
 
             // --- Category navigation stack for breadcrumbs ---
             val categoryStack = remember { mutableStateListOf<Pair<String, String>>() }
             var categoryOriginRoute by remember { mutableStateOf<String?>(null) }
 
+            // Check authentication state and set initial route
+            LaunchedEffect(isLoggedIn) {
+                selectedRoute = when {
+                    isLoggedIn -> "dashboard"
+                    else -> "welcome"
+                }
+            }
+
             PennyPincherTheme(useDarkTheme = isDarkTheme) {
                 when (selectedRoute) {
+                    "loading" -> {
+                        // Show loading screen while checking authentication
+                        SplashScreen()
+                    }
+                    
                     "welcome" -> WelcomeScreen(
                         onGetStarted = { selectedRoute = "login" }
                     )
@@ -77,7 +99,7 @@ class MainActivity : ComponentActivity() {
                                     onToggleTheme = { isDarkTheme = !isDarkTheme },
                                     onLogout = {
                                         AuthRepository.signOut()
-                                        selectedRoute = "login"
+                                        selectedRoute = "welcome"
                                     }
                                 )
                             }
@@ -188,7 +210,12 @@ class MainActivity : ComponentActivity() {
                                                 onBack = { selectedRoute = "paymentMethods" }
                                             )
                                         }
-                                        selectedRoute == "incomeSources" -> IncomeSourcesScreen(userId = userId)
+                                        selectedRoute == "incomeSources" -> IncomeSourcesScreen(
+                                            userId = userId,
+                                            onIncomeSourceClick = { incomeSourceId, incomeSourceName ->
+                                                // Handle income source click if needed
+                                            }
+                                        )
                                     }
                                 }
                             }
