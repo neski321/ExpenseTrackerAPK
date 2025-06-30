@@ -23,7 +23,7 @@ PennyPincher is a modern personal finance management app for Android, built with
 ### Setup
 1. **Clone the repository:**
    ```bash
-   git clone https://github.com/yourusername/PennyPincher.git
+   git clone https://github.com/neski321/PennyPincher.git
    cd PennyPincher
    ```
 2. **Open in Android Studio:**
