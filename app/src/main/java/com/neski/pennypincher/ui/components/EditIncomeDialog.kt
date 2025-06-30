@@ -18,7 +18,6 @@ import androidx.compose.material.icons.filled.Close
 import com.neski.pennypincher.data.models.IncomeSource
 import com.neski.pennypincher.data.models.Currency
 import com.neski.pennypincher.data.repository.CurrencyRepository
-import com.neski.pennypincher.data.repository.IncomeRepository
 import com.neski.pennypincher.data.repository.IncomeSourceRepository
 import kotlinx.coroutines.launch
 
@@ -178,10 +177,7 @@ fun EditIncomeDialog(
                             incomeSourceId = sourceId,
                             currencyId = currencyId
                         )
-                        coroutineScope.launch {
-                            IncomeRepository.updateIncome(userId, updatedIncome)
-                            onUpdate(updatedIncome)
-                        }
+                        onUpdate(updatedIncome)
                     },
                     enabled = amount.isNotBlank() && sourceId.isNotBlank() && currencyId.isNotBlank(),
                     modifier = Modifier.fillMaxWidth()

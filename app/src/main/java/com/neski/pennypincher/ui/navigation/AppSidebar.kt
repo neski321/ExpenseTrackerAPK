@@ -1,6 +1,5 @@
 package com.neski.pennypincher.ui.navigation
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
@@ -20,10 +19,10 @@ fun AppSidebar(
     selectedRoute: String,
     onItemSelected: (String) -> Unit,
     onToggleTheme: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    isDarkTheme: Boolean
 ) {
     val colors = MaterialTheme.colorScheme
-    val isDark = isSystemInDarkTheme()
 
     val items = listOf(
         SidebarItem("Dashboard", "dashboard", Icons.Default.Home),
@@ -76,7 +75,7 @@ fun AppSidebar(
                 selected = false,
                 onClick = onToggleTheme,
                 icon = {
-                    val themeIcon = if (isDark) Icons.Default.Brightness7 else Icons.Default.DarkMode
+                    val themeIcon = if (isDarkTheme) Icons.Default.Brightness7 else Icons.Default.DarkMode
                     Icon(themeIcon, contentDescription = "Toggle Theme", tint = colors.onSurface)
                 },
                 modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)

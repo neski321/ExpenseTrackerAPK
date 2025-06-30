@@ -42,7 +42,7 @@ object IncomeRepository {
     suspend fun addIncome(userId: String, income: Income) {
         db.collection("users")
             .document(userId)
-            .collection("income")
+            .collection("incomes")
             .add(income)
             .await()
 
@@ -56,7 +56,7 @@ object IncomeRepository {
 
         db.collection("users")
             .document(userId)
-            .collection("income")
+            .collection("incomes")
             .document(income.id)
             .set(income)
             .await()
@@ -69,7 +69,7 @@ object IncomeRepository {
     suspend fun deleteIncome(userId: String, incomeId: String) {
         db.collection("users")
             .document(userId)
-            .collection("income")
+            .collection("incomes")
             .document(incomeId)
             .delete()
             .await()

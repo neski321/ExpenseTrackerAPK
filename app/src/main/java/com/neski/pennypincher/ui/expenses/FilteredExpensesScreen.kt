@@ -42,7 +42,8 @@ fun FilteredExpensesScreen(
     paymentMethodId: String? = null,
     paymentMethodName: String? = null,
     onBack: (() -> Unit)? = null,
-    onNavigateToCategory: ((String, String) -> Unit)? = null
+    onNavigateToCategory: ((String, String) -> Unit)? = null,
+    onNavigateToFilteredExpenses: ((String, String) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
     var expenses by remember { mutableStateOf<List<Expense>>(emptyList()) }
@@ -256,7 +257,13 @@ fun FilteredExpensesScreen(
                                         expenseToEdit = expense
                                         showEditDialog = true
                                     },
-                                    onDelete = { deleteExpense(expense) }
+                                    onDelete = { deleteExpense(expense) },
+                                    onCategoryClick = {
+                                        onNavigateToCategory?.invoke(expense.categoryId, categoryName)
+                                    },
+                                    onPaymentMethodClick = {
+                                        onNavigateToFilteredExpenses?.invoke(expense.paymentMethodId ?: "", paymentMethodName)
+                                    }
                                 )
                             }
                         )

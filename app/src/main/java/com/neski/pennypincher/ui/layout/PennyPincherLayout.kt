@@ -12,6 +12,7 @@ fun PennyPincherLayout(
     onRouteChange: (String) -> Unit,
     onToggleTheme: () -> Unit,
     onLogout: () -> Unit,
+    isDarkTheme: Boolean,
     content: @Composable () -> Unit
 ) {
     PermanentNavigationDrawer(
@@ -20,7 +21,8 @@ fun PennyPincherLayout(
                 selectedRoute = selectedRoute,
                 onItemSelected = onRouteChange,
                 onToggleTheme = onToggleTheme,
-                onLogout = onLogout
+                onLogout = onLogout,
+                isDarkTheme = isDarkTheme
             )
         }
     ) {

@@ -17,12 +17,15 @@ import kotlinx.coroutines.flow.asStateFlow
  * - Session expiration (30 days)
  * - Automatic session validation on app start
  * - Reactive state management using StateFlow
+ * - Theme preference caching and persistence
  * 
  * Usage:
  * 1. Initialize in MainActivity.onCreate(): SessionManager.initialize(this)
  * 2. Observe authentication state: SessionManager.isLoggedIn.collectAsState()
  * 3. Get current user: SessionManager.currentUser.collectAsState()
- * 4. Sign out: SessionManager.signOut()
+ * 4. Observe theme state: SessionManager.isDarkTheme.collectAsState()
+ * 5. Toggle theme: SessionManager.toggleTheme()
+ * 6. Sign out: SessionManager.signOut()
  */
 object SessionManager {
     private const val PREFS_NAME = "PennyPincherSession"
@@ -30,6 +33,7 @@ object SessionManager {
     private const val KEY_USER_ID = "user_id"
     private const val KEY_USER_EMAIL = "user_email"
     private const val KEY_SESSION_TIMESTAMP = "session_timestamp"
+    private const val KEY_IS_DARK_THEME = "is_dark_theme"
     
     private lateinit var prefs: SharedPreferences
     private val auth = FirebaseAuth.getInstance()
@@ -40,6 +44,9 @@ object SessionManager {
     private val _currentUser = MutableStateFlow<FirebaseUser?>(null)
     val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
     
+    private val _isDarkTheme = MutableStateFlow(false)
+    val isDarkTheme: StateFlow<Boolean> = _isDarkTheme.asStateFlow()
+    
     /**
      * Initialize the SessionManager with the application context.
      * This should be called once in MainActivity.onCreate().
@@ -48,6 +55,9 @@ object SessionManager {
      */
     fun initialize(context: Context) {
         prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        
+        // Load cached theme preference
+        loadThemePreference()
         
         // Set up Firebase Auth state listener
         auth.addAuthStateListener { firebaseAuth ->
@@ -66,6 +76,52 @@ object SessionManager {
         
         // Check if there's a cached session
         checkCachedSession()
+    }
+    
+    /**
+     * Load the cached theme preference from SharedPreferences.
+     */
+    private fun loadThemePreference() {
+        val isDarkThemeCached = prefs.getBoolean(KEY_IS_DARK_THEME, false)
+        _isDarkTheme.value = isDarkThemeCached
+    }
+    
+    /**
+     * Save the current theme preference to SharedPreferences.
+     * 
+     * @param isDarkTheme Whether the dark theme is enabled
+     */
+    private fun saveThemePreference(isDarkTheme: Boolean) {
+        prefs.edit().apply {
+            putBoolean(KEY_IS_DARK_THEME, isDarkTheme)
+        }.apply()
+        _isDarkTheme.value = isDarkTheme
+    }
+    
+    /**
+     * Toggle the current theme and save the preference.
+     */
+    fun toggleTheme() {
+        val newTheme = !_isDarkTheme.value
+        saveThemePreference(newTheme)
+    }
+    
+    /**
+     * Set the theme preference explicitly.
+     * 
+     * @param isDarkTheme Whether the dark theme should be enabled
+     */
+    fun setTheme(isDarkTheme: Boolean) {
+        saveThemePreference(isDarkTheme)
+    }
+    
+    /**
+     * Get the current theme preference.
+     * 
+     * @return true if dark theme is enabled, false otherwise
+     */
+    fun getCurrentTheme(): Boolean {
+        return _isDarkTheme.value
     }
     
     /**
@@ -195,7 +251,19 @@ object SessionManager {
      */
     fun clearAllData() {
         clearSession()
+        clearThemePreference()
         // Clear all cached data from other repositories
         // This could be expanded to clear all app data if needed
+    }
+
+    /**
+     * Clear the theme preference from SharedPreferences.
+     * This resets the theme to the default (light theme).
+     */
+    fun clearThemePreference() {
+        prefs.edit().apply {
+            remove(KEY_IS_DARK_THEME)
+        }.apply()
+        _isDarkTheme.value = false
     }
 } 

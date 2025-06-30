@@ -29,6 +29,7 @@ import com.neski.pennypincher.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 import com.neski.pennypincher.ui.expenses.FilteredExpensesScreen
 import com.neski.pennypincher.ui.income.IncomeSourcesScreen
+import com.neski.pennypincher.ui.income.FilteredIncomeScreen
 import com.neski.pennypincher.ui.components.SplashScreen
 
 class MainActivity : ComponentActivity() {
@@ -42,13 +43,15 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             var selectedRoute by remember { mutableStateOf("loading") } // Start with loading
-            var isDarkTheme by remember { mutableStateOf(false) }
             val drawerState = rememberDrawerState(DrawerValue.Closed)
             val scope = rememberCoroutineScope()
 
             // Observe authentication state
             val isLoggedIn by SessionManager.isLoggedIn.collectAsState()
             val currentUser by SessionManager.currentUser.collectAsState()
+            
+            // Observe theme state from SessionManager
+            val isDarkTheme by SessionManager.isDarkTheme.collectAsState()
 
             // Firebase user ID
             val userId = currentUser?.uid ?: ""
@@ -56,6 +59,12 @@ class MainActivity : ComponentActivity() {
             // --- Category navigation stack for breadcrumbs ---
             val categoryStack = remember { mutableStateListOf<Pair<String, String>>() }
             var categoryOriginRoute by remember { mutableStateOf<String?>(null) }
+            
+            // --- Income source navigation origin tracking ---
+            var incomeSourceOriginRoute by remember { mutableStateOf<String?>(null) }
+            
+            // --- Payment method navigation origin tracking ---
+            var paymentMethodOriginRoute by remember { mutableStateOf<String?>(null) }
 
             // Check authentication state and set initial route
             LaunchedEffect(isLoggedIn) {
@@ -96,11 +105,14 @@ class MainActivity : ComponentActivity() {
                                         selectedRoute = it
                                         scope.launch { drawerState.close() }
                                     },
-                                    onToggleTheme = { isDarkTheme = !isDarkTheme },
+                                    onToggleTheme = {
+                                        SessionManager.toggleTheme()
+                                    },
                                     onLogout = {
                                         AuthRepository.signOut()
                                         selectedRoute = "welcome"
-                                    }
+                                    },
+                                    isDarkTheme = isDarkTheme
                                 )
                             }
                         ) {
@@ -136,6 +148,10 @@ class MainActivity : ComponentActivity() {
                                                 categoryStack.add(categoryId to categoryName)
                                                 categoryOriginRoute = "expenses"
                                                 selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                paymentMethodOriginRoute = "expenses"
+                                                selectedRoute = "expensesByPaymentMethod:$paymentMethodId:$paymentMethodName"
                                             }
                                         )
                                         selectedRoute.startsWith("expensesByMonth:") -> {
@@ -146,7 +162,13 @@ class MainActivity : ComponentActivity() {
                                                 onBack = { selectedRoute = "dashboard" }
                                             )
                                         }
-                                        selectedRoute == "income" -> IncomeScreen(userId = userId)
+                                        selectedRoute == "income" -> IncomeScreen(
+                                            userId = userId,
+                                            onNavigateToFilteredIncome = { incomeSourceId, incomeSourceName ->
+                                                incomeSourceOriginRoute = "income"
+                                                selectedRoute = "incomeBySource:$incomeSourceId:$incomeSourceName"
+                                            }
+                                        )
                                         selectedRoute == "categories" -> CategoriesScreen(
                                             userId = userId,
                                             onCategoryClick = { categoryId, categoryName ->
@@ -159,6 +181,7 @@ class MainActivity : ComponentActivity() {
                                         selectedRoute == "paymentMethods" -> PaymentMethodsScreen(
                                             userId = userId,
                                             onPaymentMethodClick = { paymentMethodId, paymentMethodName ->
+                                                paymentMethodOriginRoute = "paymentMethods"
                                                 selectedRoute = "expensesByPaymentMethod:$paymentMethodId:$paymentMethodName"
                                             }
                                         )
@@ -207,15 +230,45 @@ class MainActivity : ComponentActivity() {
                                                 userId = userId,
                                                 paymentMethodId = paymentMethodId,
                                                 paymentMethodName = paymentMethodName,
-                                                onBack = { selectedRoute = "paymentMethods" }
+                                                onBack = { 
+                                                    selectedRoute = paymentMethodOriginRoute ?: "expenses"
+                                                    paymentMethodOriginRoute = null
+                                                },
+                                                onNavigateToCategory = { categoryId, categoryName ->
+                                                    categoryStack.clear()
+                                                    categoryStack.add(categoryId to categoryName)
+                                                    categoryOriginRoute = "expensesByPaymentMethod"
+                                                    selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                                },
+                                                onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
+                                                    selectedRoute = "expensesByPaymentMethod:$newPaymentMethodId:$newPaymentMethodName"
+                                                }
                                             )
                                         }
                                         selectedRoute == "incomeSources" -> IncomeSourcesScreen(
                                             userId = userId,
                                             onIncomeSourceClick = { incomeSourceId, incomeSourceName ->
-                                                // Handle income source click if needed
+                                                incomeSourceOriginRoute = "incomeSources"
+                                                selectedRoute = "incomeBySource:$incomeSourceId:$incomeSourceName"
                                             }
                                         )
+                                        selectedRoute.startsWith("incomeBySource:") -> {
+                                            val parts = selectedRoute.removePrefix("incomeBySource:").split(":")
+                                            val incomeSourceId = parts.getOrNull(0) ?: ""
+                                            val incomeSourceName = parts.drop(1).joinToString(":")
+                                            FilteredIncomeScreen(
+                                                userId = userId,
+                                                incomeSourceId = incomeSourceId,
+                                                incomeSourceName = incomeSourceName,
+                                                onBack = { 
+                                                    selectedRoute = incomeSourceOriginRoute ?: "income"
+                                                    incomeSourceOriginRoute = null
+                                                },
+                                                onNavigateToFilteredIncome = { newIncomeSourceId, newIncomeSourceName ->
+                                                    selectedRoute = "incomeBySource:$newIncomeSourceId:$newIncomeSourceName"
+                                                }
+                                            )
+                                        }
                                     }
                                 }
                             }

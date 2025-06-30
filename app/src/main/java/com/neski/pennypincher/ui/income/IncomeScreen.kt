@@ -17,6 +17,8 @@ import com.neski.pennypincher.data.models.Income
 import com.neski.pennypincher.data.models.Currency
 import com.neski.pennypincher.data.repository.IncomeRepository
 import com.neski.pennypincher.data.repository.CurrencyRepository
+import com.neski.pennypincher.data.models.IncomeSource
+import com.neski.pennypincher.data.repository.IncomeSourceRepository
 import com.neski.pennypincher.ui.components.AddIncomeDialog
 import com.neski.pennypincher.ui.components.EditIncomeDialog
 import com.neski.pennypincher.ui.components.IncomeRow
@@ -40,7 +42,10 @@ import com.neski.pennypincher.ui.theme.getTextColor
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
-fun IncomeScreen(userId: String) {
+fun IncomeScreen(
+    userId: String,
+    onNavigateToFilteredIncome: ((String, String) -> Unit)? = null
+) {
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
 
@@ -53,8 +58,9 @@ fun IncomeScreen(userId: String) {
     var incomeToDelete by remember { mutableStateOf<Income?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
 
-
     var currencyMap by remember { mutableStateOf<Map<String, Currency>>(emptyMap()) }
+    var incomeSources by remember { mutableStateOf<List<IncomeSource>>(emptyList()) }
+    val incomeSourceMap = incomeSources.associateBy({ it.id }, { it.name })
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -63,6 +69,7 @@ fun IncomeScreen(userId: String) {
                 isRefreshing = true
                 incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
                 currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
+                incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
                 isRefreshing = false
             }
         }
@@ -73,6 +80,7 @@ fun IncomeScreen(userId: String) {
             isLoading = true
             incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
             currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
+            incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
             isLoading = false
         }
     }
@@ -119,6 +127,31 @@ fun IncomeScreen(userId: String) {
                 } else if (incomes.isEmpty()) {
                     Text("No income records found.", color = getTextColor())
                 } else {
+
+                    // Table header row
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 2.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        //color = MaterialTheme.colorScheme.surfaceVariant,
+                        tonalElevation = 1.dp,
+                        //border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Date", modifier = Modifier.weight(1.8f), style = MaterialTheme.typography.labelMedium)
+                            Text("Income Source", modifier = Modifier.weight(2.3f), style = MaterialTheme.typography.labelMedium)
+                            Text("Amount", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium)
+                            Text("Actions", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(incomes, key = { it.id }) { income ->
                             val dismissState = rememberDismissState(
@@ -154,7 +187,7 @@ fun IncomeScreen(userId: String) {
                                 dismissContent = {
                                     IncomeRow(
                                         income = income,
-                                        sourceName = income.incomeSourceId, // This will show the ID unless mapped
+                                        sourceName = incomeSourceMap[income.incomeSourceId] ?: income.incomeSourceId,
                                         onEdit = { editingIncome = income },
                                         onDelete = {
                                             scope.launch {
@@ -162,6 +195,9 @@ fun IncomeScreen(userId: String) {
                                                 loadData()
                                                 snackbarHostState.showSnackbar("Income deleted")
                                             }
+                                        },
+                                        onSourceClick = {
+                                            onNavigateToFilteredIncome?.invoke(income.incomeSourceId, incomeSourceMap[income.incomeSourceId] ?: income.incomeSourceId)
                                         }
                                     )
                                 }
@@ -198,10 +234,19 @@ fun IncomeScreen(userId: String) {
                 userId = userId,
                 income = income,
                 onDismiss = { editingIncome = null },
-                onUpdate = { updated ->
+                onUpdate = { updatedIncome ->
                     scope.launch {
-                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
-                        editingIncome = null
+                        try {
+                            IncomeRepository.updateIncome(userId, updatedIncome)
+                            // Force refresh all data to ensure consistency
+                            incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                            currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
+                            incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
+                            editingIncome = null
+                            snackbarHostState.showSnackbar("Income updated successfully")
+                        } catch (e: Exception) {
+                            snackbarHostState.showSnackbar("Failed to update income")
+                        }
                     }
                 }
             )

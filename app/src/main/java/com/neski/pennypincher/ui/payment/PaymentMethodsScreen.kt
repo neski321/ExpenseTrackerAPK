@@ -137,7 +137,7 @@ fun PaymentMethodsScreen(
                         }
                         SwipeToDismiss(
                             state = dismissState,
-                            directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                            directions = setOf(DismissDirection.EndToStart),
                             background = {},
                             dismissContent = {
                                 Card(
