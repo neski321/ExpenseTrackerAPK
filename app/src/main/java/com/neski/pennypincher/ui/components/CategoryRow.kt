@@ -17,7 +17,8 @@ fun CategoryRow(
     category: Category,
     categoryNameMap: Map<String, String> = emptyMap(), // Map of id -> name
     onEdit: () -> Unit = {},
-    onClick: () -> Unit = {}
+    onClick: () -> Unit = {},
+    indentLevel: Int = 0
 ) {
     val parentName = category.parentId?.let { categoryNameMap[it] }
 
@@ -34,7 +35,10 @@ fun CategoryRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier.padding(start = (indentLevel * 24).dp)
+            ) {
                 CategoryIcon(
                     name = category.name,
                     color = category.color ?: "#888888"

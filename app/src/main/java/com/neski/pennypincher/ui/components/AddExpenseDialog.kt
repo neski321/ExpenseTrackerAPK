@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -73,12 +74,8 @@ fun AddExpenseDialog(
     var currencyExpanded by remember { mutableStateOf(false) }
 
     var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
-    val currencyMap = currencies.associateBy { it.id }
-    val selectedCurrencyLabel = currencyMap[currency]?.let { "${it.symbol} ${it.code}" } ?: "Select Currency"
-
-
-
-
+    //val currencyMap = currencies.associateBy { it.id }
+    //val selectedCurrencyLabel = currencyMap[currency]?.let { "${it.symbol} ${it.code}" } ?: "Select Currency"
 
     // Load categories
     LaunchedEffect(userId) {
@@ -86,27 +83,33 @@ fun AddExpenseDialog(
             categories = CategoryRepository.getAllCategories(userId)
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
             currencies = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true)
-
         }
     }
 
     // Date picker for expense date
     if (showDatePicker.value) {
         val calendar = Calendar.getInstance().apply { time = date }
-        DatePickerDialog(
-            context,
-            { _, year, month, day ->
-                calendar.set(year, month, day)
-                date = calendar.time
+        DisposableEffect(showDatePicker.value) {
+            val dialog = DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    date = calendar.time
+                    showDatePicker.value = false
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+            dialog.setOnCancelListener {
                 showDatePicker.value = false
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).apply {
-            LaunchedEffect(Unit) { show() }
-            DisposableEffect(Unit) {
-                onDispose { dismiss() }
+            }
+            dialog.setOnDismissListener {
+                showDatePicker.value = false
+            }
+            dialog.show()
+            onDispose {
+                dialog.dismiss()
             }
         }
     }
@@ -116,245 +119,271 @@ fun AddExpenseDialog(
         val calendar = Calendar.getInstance().apply {
             time = nextDueDate ?: Date()
         }
-        DatePickerDialog(
-            context,
-            { _, year, month, day ->
-                calendar.set(year, month, day)
-                nextDueDate = calendar.time
+        DisposableEffect(showNextDueDatePicker.value) {
+            val dialog = DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    nextDueDate = calendar.time
+                    showNextDueDatePicker.value = false
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+            dialog.setOnCancelListener {
                 showNextDueDatePicker.value = false
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).apply {
-            LaunchedEffect(Unit) { show() }
-            DisposableEffect(Unit) {
-                onDispose { dismiss() }
+            }
+            dialog.setOnDismissListener {
+                showNextDueDatePicker.value = false
+            }
+            dialog.show()
+            onDispose {
+                dialog.dismiss()
             }
         }
     }
 
+    // Mirror EditExpenseDialog layout and logic
     val selectedCategoryName = categories.find { it.id == category }?.name ?: "Select Category"
     val selectedPaymentMethodName = paymentMethods.find { it.id == paymentMethod }?.name ?: "Select Payment Method"
+    val selectedCurrency = currencies.find { it.id == currency }?.let {
+        if (it.symbol.isNotBlank()) "${it.code} (${it.symbol})" else it.code
+    } ?: "Select Currency"
 
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        confirmButton = {
-            Button(
-                onClick = {
-                    onAdd(
-                        description,
-                        amount.toDoubleOrNull() ?: 0.0,
-                        currency,
-                        date,
-                        category,
-                        if (paymentMethod.isBlank()) null else paymentMethod,
-                        isSubscription,
-                        nextDueDate
-                    )
-                },
-                enabled = description.isNotBlank() && amount.isNotBlank() && category.isNotBlank()
-            ) {
-                Text("Add Expense", color = getTextColor())
-            }
-        },
-        dismissButton = {
-            TextButton(onClick = onDismiss) {
-                Text("Cancel", color = getTextColor())
-            }
-        },
-        title = {
-            Column {
-                Text("Add New Expense", style = MaterialTheme.typography.headlineSmall, color = getTextColor())
-                Text("Enter the details of your new expense.", style = MaterialTheme.typography.bodySmall, color = getTextColor())
-            }
-        },
-        text = {
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                OutlinedTextField(
-                    value = description,
-                    onValueChange = { description = it },
-                    label = { Text("Description") },
-                    placeholder = { Text("e.g., Groceries, Netflix") },
-                    modifier = Modifier.fillMaxWidth()
-                )
-
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+    androidx.compose.ui.window.Dialog(onDismissRequest = onDismiss) {
+        Surface(
+            shape = MaterialTheme.shapes.medium,
+            tonalElevation = 8.dp
+        ) {
+            Column(modifier = Modifier.padding(24.dp)) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column {
+                        Text("Add New Expense", style = MaterialTheme.typography.titleLarge, color = getTextColor())
+                        Text("Enter the details of your new expense.", style = MaterialTheme.typography.bodySmall, color = getTextColor())
+                    }
+                    IconButton(onClick = onDismiss) {
+                        Icon(Icons.Default.Close, contentDescription = "Close")
+                    }
+                }
+                Spacer(modifier = Modifier.height(10.dp))
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                     OutlinedTextField(
-                        value = amount,
-                        onValueChange = { amount = it },
-                        label = { Text("Amount") },
-                        modifier = Modifier.weight(1f),
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        value = description,
+                        onValueChange = { description = it },
+                        label = { Text("Description") },
+                        modifier = Modifier.fillMaxWidth()
                     )
+
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = amount,
+                            onValueChange = { amount = it },
+                            label = { Text("Amount") },
+                            modifier = Modifier.weight(1f),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number)
+                        )
+
+                        ExposedDropdownMenuBox(
+                            expanded = currencyExpanded,
+                            onExpandedChange = { currencyExpanded = !currencyExpanded },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            OutlinedTextField(
+                                readOnly = true,
+                                value = selectedCurrency,
+                                onValueChange = {},
+                                label = { Text("Currency") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded)
+                                },
+                                modifier = Modifier.menuAnchor().fillMaxWidth()
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = currencyExpanded,
+                                onDismissRequest = { currencyExpanded = false }
+                            ) {
+                                if (currencies.isEmpty()) {
+                                    DropdownMenuItem(
+                                        text = { Text("No currencies available") },
+                                        onClick = { currencyExpanded = false }
+                                    )
+                                } else {
+                                    currencies.sortedBy { it.code }.forEach { curr ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Text(
+                                                    if (curr.symbol.isNotBlank())
+                                                        "${curr.code} (${curr.symbol}) - ${curr.name}"
+                                                    else
+                                                        "${curr.code} - ${curr.name}"
+                                                )
+                                            },
+                                            onClick = {
+                                                currency = curr.id
+                                                currencyExpanded = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = formattedDate,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Date of Expense") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                showDatePicker.value = true
+                            }
+                        ) {
+                            Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                        }
+                    }
 
                     ExposedDropdownMenuBox(
-                        expanded = currencyExpanded,
-                        onExpandedChange = { currencyExpanded = !currencyExpanded }
+                        expanded = expanded,
+                        onExpandedChange = { expanded = !expanded }
                     ) {
                         OutlinedTextField(
                             readOnly = true,
-                            value = selectedCurrencyLabel,
+                            value = selectedCategoryName,
                             onValueChange = {},
-                            label = { Text("Currency") },
+                            label = { Text("Category") },
                             trailingIcon = {
-                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = currencyExpanded)
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                             },
-                            modifier = Modifier.menuAnchor().weight(1f)
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
                         )
 
                         ExposedDropdownMenu(
-                            expanded = currencyExpanded,
-                            onDismissRequest = { currencyExpanded = false }
+                            expanded = expanded,
+                            onDismissRequest = { expanded = false }
                         ) {
-                            currencies.sortedBy { it.code }.forEach { item ->
+                            val grouped = categories.groupBy { cat ->
+                                categories.find { it.id == cat.parentId }?.name ?: "Parent"
+                            }.toSortedMap()
+
+                            grouped.forEach { (parentName, subcats) ->
                                 DropdownMenuItem(
-                                    text = { Text("${item.symbol} ${item.code}") },
-                                    onClick = {
-                                        currency = item.id
-                                        currencyExpanded = false
-                                    }
+                                    text = { Text(parentName.uppercase(), style = MaterialTheme.typography.labelMedium) },
+                                    onClick = {},
+                                    enabled = false
                                 )
-                            }
-                        }
-                    }
-
-                }
-
-                OutlinedTextField(
-                    value = formattedDate,
-                    onValueChange = {},
-                    readOnly = true,
-                    label = { Text("Date of Expense") },
-                    trailingIcon = {
-                        Icon(
-                            Icons.Default.CalendarToday,
-                            contentDescription = "Pick Date",
-                            modifier = Modifier.clickable { showDatePicker.value = true }
-                        )
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clickable { showDatePicker.value = true }
-                )
-
-                ExposedDropdownMenuBox(
-                    expanded = expanded,
-                    onExpandedChange = { expanded = !expanded }
-                ) {
-                    OutlinedTextField(
-                        readOnly = true,
-                        value = selectedCategoryName,
-                        onValueChange = {},
-                        label = { Text("Category") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
-
-                    ExposedDropdownMenu(
-                        expanded = expanded,
-                        onDismissRequest = { expanded = false }
-                    ) {
-                        val grouped = categories.groupBy { cat ->
-                            categories.find { it.id == cat.parentId }?.name ?: "Parent"
-                        }.toSortedMap()
-
-                        grouped.forEach { (parentName, subcats) ->
-                            DropdownMenuItem(
-                                text = {
-                                    Text(
-                                        parentName.uppercase(),
-                                        style = MaterialTheme.typography.labelMedium
+                                subcats.sortedBy { it.name }.forEach { cat ->
+                                    DropdownMenuItem(
+                                        text = { Text(cat.name) },
+                                        onClick = {
+                                            category = cat.id
+                                            expanded = false
+                                        }
                                     )
-                                },
-                                onClick = {},
-                                enabled = false
-                            )
-                            subcats.sortedBy { it.name }.forEach { cat ->
+                                }
+                            }
+                        }
+                    }
+
+                    ExposedDropdownMenuBox(
+                        expanded = paymentExpanded,
+                        onExpandedChange = { paymentExpanded = !paymentExpanded }
+                    ) {
+                        OutlinedTextField(
+                            readOnly = true,
+                            value = selectedPaymentMethodName,
+                            onValueChange = {},
+                            label = { Text("Payment Method (Optional)") },
+                            trailingIcon = {
+                                ExposedDropdownMenuDefaults.TrailingIcon(expanded = paymentExpanded)
+                            },
+                            modifier = Modifier.menuAnchor().fillMaxWidth()
+                        )
+
+                        ExposedDropdownMenu(
+                            expanded = paymentExpanded,
+                            onDismissRequest = { paymentExpanded = false }
+                        ) {
+                            paymentMethods.sortedBy { it.name }.forEach { method ->
                                 DropdownMenuItem(
-                                    text = { Text(cat.name) },
+                                    text = { Text(method.name) },
                                     onClick = {
-                                        category = cat.id
-                                        expanded = false
+                                        paymentMethod = method.id
+                                        paymentExpanded = false
                                     }
                                 )
                             }
                         }
                     }
-                }
 
-                ExposedDropdownMenuBox(
-                    expanded = paymentExpanded,
-                    onExpandedChange = { paymentExpanded = !paymentExpanded }
-                ) {
-                    OutlinedTextField(
-                        readOnly = true,
-                        value = selectedPaymentMethodName,
-                        onValueChange = {},
-                        label = { Text("Payment Method (Optional)") },
-                        trailingIcon = {
-                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = paymentExpanded)
-                        },
-                        modifier = Modifier
-                            .menuAnchor()
-                            .fillMaxWidth()
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Checkbox(
+                            checked = isSubscription,
+                            onCheckedChange = { isSubscription = it }
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Is this a recurring subscription?")
+                    }
 
-                    ExposedDropdownMenu(
-                        expanded = paymentExpanded,
-                        onDismissRequest = { paymentExpanded = false }
-                    ) {
-                        paymentMethods.sortedBy { it.name }.forEach { method ->
-                            DropdownMenuItem(
-                                text = { Text(method.name) },
-                                onClick = {
-                                    paymentMethod = method.id
-                                    paymentExpanded = false
-                                }
+                    if (isSubscription) {
+                        Column {
+                            Text("Next Due Date", style = MaterialTheme.typography.bodyMedium)
+                            OutlinedTextField(
+                                value = formattedNextDueDate,
+                                onValueChange = {},
+                                readOnly = true,
+                                placeholder = { Text("Pick next due date") },
+                                trailingIcon = {
+                                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                                },
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { showNextDueDatePicker.value = true }
                             )
+                            Text("Set the date for the next billing cycle.", style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
-
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
-                        checked = isSubscription,
-                        onCheckedChange = { isSubscription = it }
-                    )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    TextButton(onClick = onDismiss) {
+                        Text("Cancel", color = getTextColor())
+                    }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Is this a recurring subscription?")
-                }
-
-                if (isSubscription) {
-                    Column(modifier = Modifier.fillMaxWidth()) {
-                        Text("Next Due Date", style = MaterialTheme.typography.bodyMedium)
-                        OutlinedTextField(
-                            value = formattedNextDueDate,
-                            onValueChange = {},
-                            readOnly = true,
-                            placeholder = { Text("Pick next due date") },
-                            trailingIcon = {
-                                Icon(
-                                    Icons.Default.CalendarToday,
-                                    contentDescription = "Pick Date",
-                                    modifier = Modifier.clickable { showNextDueDatePicker.value = true }
-                                )
-                            },
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { showNextDueDatePicker.value = true }
-                        )
-                        Text(
-                            "Set the date for the next billing cycle.",
-                            style = MaterialTheme.typography.bodySmall
-                        )
+                    Button(
+                        onClick = {
+                            onAdd(
+                                description,
+                                amount.toDoubleOrNull() ?: 0.0,
+                                currency,
+                                date,
+                                category,
+                                if (paymentMethod.isBlank()) null else paymentMethod,
+                                isSubscription,
+                                nextDueDate
+                            )
+                        },
+                        enabled = description.isNotBlank() && amount.isNotBlank() && category.isNotBlank() && currency.isNotBlank()
+                    ) {
+                        Text("Add Expense", color = getTextColor())
                     }
                 }
             }
         }
-    )
+    }
 }

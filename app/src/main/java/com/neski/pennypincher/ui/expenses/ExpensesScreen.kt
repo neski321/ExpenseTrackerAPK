@@ -1,6 +1,7 @@
 package com.neski.pennypincher.ui.expenses
 
 import android.annotation.SuppressLint
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
@@ -11,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 
@@ -30,12 +32,15 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
 import java.util.Date
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
@@ -194,9 +199,7 @@ fun ExpensesScreen(
                             }
                             Spacer(Modifier.height(8.dp))
                             LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxSize()
-                                    .padding(bottom = 50.dp),
+
                                 verticalArrangement = Arrangement.spacedBy(4.dp)
                             ) {
                                 items(filteredExpenses, key = { it.id }) { expense ->
@@ -217,7 +220,22 @@ fun ExpensesScreen(
                                     SwipeToDismiss(
                                         state = dismissState,
                                         directions = setOf(DismissDirection.EndToStart),
-                                        background = {},
+                                        background = {
+                                            Box(
+                                                modifier = Modifier
+                                                    .fillMaxSize()
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(Color.Red.copy(alpha = 0.2f))
+                                                    .padding(horizontal = 20.dp),
+                                                contentAlignment = Alignment.CenterEnd
+                                            ) {
+                                                Icon(
+                                                    imageVector = Icons.Default.Delete,
+                                                    contentDescription = "Delete",
+                                                    tint = MaterialTheme.colorScheme.error
+                                                )
+                                            }
+                                        },
                                         dismissContent = {
                                             ExpenseRow(
                                                 expense = expense,

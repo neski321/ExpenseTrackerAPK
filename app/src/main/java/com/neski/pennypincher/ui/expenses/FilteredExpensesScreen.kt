@@ -121,152 +121,163 @@ fun FilteredExpensesScreen(
     }
 
     Scaffold(
-        topBar = {
-            // Build the path from root to selected category (outside composable lambda)
-            val categoryPath = if (categoryId != null && categoryName != null) {
-                val path = mutableListOf<Category>()
-                var cat = categories.find { it.id == categoryId }
-                while (cat != null) {
-                    path.add(cat)
-                    cat = cat.parentId?.let { parentId -> categories.find { it.id == parentId } }
-                }
-                path.reverse()
-                path
-            } else null
-
-            val titleComposable: @Composable () -> Unit = when {
-                categoryPath != null && categoryPath.isNotEmpty() -> {
-                    @Composable {
-                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Text("Expenses for ", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
-                                categoryPath.forEachIndexed { idx, c ->
-                                    if (idx > 0) {
-                                        Text(" > ", color = getTextColor(), style = MaterialTheme.typography.titleLarge)
-                                    }
-                                    if (idx < categoryPath.size - 1 && onNavigateToCategory != null) {
-                                        Text(
-                                            text = c.name,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
-                                            modifier = Modifier.clickable { onNavigateToCategory(c.id, c.name) }
-                                        )
-                                    } else {
-                                        Text(
-                                            text = c.name,
-                                            color = MaterialTheme.colorScheme.onSurface,
-                                            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold)
-                                        )
-                                    }
-                                }
-                            }
-                            Text(
-                                "Showing expenses recorded for this category and its sub-categories across all time.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = getTextColor(),
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                }
-                month != null -> {
-                    @Composable {
-                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                            Text("Expenses for $month", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
-                            Text(
-                                "View your expenses for this period.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                }
-                paymentMethodName != null -> {
-                    @Composable {
-                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                            Text("Expenses for $paymentMethodName", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
-                            Text(
-                                "View your expenses for this payment method.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                }
-                else -> {
-                    @Composable { Text("Filtered Expenses", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor()) }
-                }
-            }
-            if (onBack != null) {
-                TopAppBar(
-                    title = { titleComposable() },
-                    navigationIcon = {
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(12.dp)
+                .fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Breadcrumb and back button
+                if (onBack != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Back to Expenses",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
+                        )
                     }
-                )
-            } else {
-                TopAppBar(title = { titleComposable() })
-            }
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    LoadingSpinner(size = 80, showText = true, loadingText = "Loading filtered expenses...")
                 }
-            } else if (expenses.isEmpty()) {
-                val filterType = when {
-                    month != null -> "this month"
-                    categoryName != null -> "this category"
-                    paymentMethodName != null -> "this payment method"
-                    else -> "the selected filter"
-                }
-                Text("No expenses found for $filterType.", color = getTextColor())
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(expenses, key = { it.id }) { expense ->
-                        val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
-                        val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
-                        val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
-
-                        LaunchedEffect(dismissState.currentValue) {
-                            if (
-                                dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                dismissState.isDismissed(DismissDirection.StartToEnd)
-                            ) {
-                                expenseToDelete = expense
-                                showConfirmDialog = true
-                            }
-                        }
-
-                        SwipeToDismiss(
-                            state = dismissState,
-                            directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-                            background = {},
-                            dismissContent = {
-                                ExpenseRow(
-                                    expense = expense,
-                                    categoryName = categoryName,
-                                    paymentMethodName = paymentMethodName,
-                                    onEdit = {
-                                        expenseToEdit = expense
-                                        showEditDialog = true
-                                    },
-                                    onDelete = { deleteExpense(expense) },
-                                    onCategoryClick = {
-                                        onNavigateToCategory?.invoke(expense.categoryId, categoryName)
-                                    },
-                                    onPaymentMethodClick = {
-                                        onNavigateToFilteredExpenses?.invoke(expense.paymentMethodId ?: "", paymentMethodName)
-                                    }
-                                )
+                
+                // Breadcrumb for category navigation
+                if (categoryName != null && parentCategory != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = parentCategory.name,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                onNavigateToCategory?.invoke(parentCategory.id, parentCategory.name)
                             }
                         )
+                        Text(
+                            text = " > ",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Text(
+                            text = categoryName,
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    }
+                }
+                
+                // Title and subtitle (optional, can be dynamic based on filter)
+                Text(
+                    text = when {
+                        month != null -> "Expenses for $month"
+                        categoryName != null -> "Expenses for $categoryName"
+                        paymentMethodName != null -> "Expenses for $paymentMethodName"
+                        else -> "Filtered Expenses"
+                    },
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = getTextColor()
+                )
+                Text(
+                    text = when {
+                        month != null -> "View your expenses for this period."
+                        categoryName != null -> "Showing expenses recorded for this category and its sub-categories across all time."
+                        paymentMethodName != null -> "View your expenses for this payment method."
+                        else -> "Track your filtered spending."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = getTextColor()
+                )
+                Spacer(Modifier.height(12.dp))
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading filtered expenses...")
+                    }
+                } else if (expenses.isEmpty()) {
+                    Text("No expenses found for the selected filter.", color = getTextColor())
+                } else {
+                    // Table header row
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 2.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 1.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Date", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Description\n/Category", modifier = Modifier.weight(2f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Payment\nMethod", modifier = Modifier.weight(1.8f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Amount", modifier = Modifier.weight(1.2f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Actions", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 50.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(expenses, key = { it.id }) { expense ->
+                            val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
+                            val categoryNameResolved = categoryMap[expense.categoryId] ?: "Unknown"
+                            val paymentMethodNameResolved = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
+
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (
+                                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                    dismissState.isDismissed(DismissDirection.StartToEnd)
+                                ) {
+                                    expenseToDelete = expense
+                                    showConfirmDialog = true
+                                }
+                            }
+
+                            SwipeToDismiss(
+                                state = dismissState,
+                                directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                                background = {},
+                                dismissContent = {
+                                    ExpenseRow(
+                                        expense = expense,
+                                        categoryName = categoryNameResolved,
+                                        paymentMethodName = paymentMethodNameResolved,
+                                        onEdit = {
+                                            expenseToEdit = expense
+                                            showEditDialog = true
+                                        },
+                                        onDelete = { deleteExpense(expense) },
+                                        onCategoryClick = {
+                                            onNavigateToCategory?.invoke(expense.categoryId, categoryNameResolved)
+                                        },
+                                        onPaymentMethodClick = {
+                                            onNavigateToFilteredExpenses?.invoke(expense.paymentMethodId ?: "", paymentMethodNameResolved)
+                                        }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

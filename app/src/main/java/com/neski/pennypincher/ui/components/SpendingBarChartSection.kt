@@ -16,7 +16,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.foundation.shape.RoundedCornerShape
-import com.patrykandpatrick.vico.core.entry.entryModelOf
+//import com.patrykandpatrick.vico.core.entry.entryModelOf
+import androidx.compose.foundation.lazy.LazyRow
+import androidx.compose.foundation.lazy.itemsIndexed
 
 @Composable
 fun SpendingBarChartSection(
@@ -62,26 +64,27 @@ fun SpendingBarChartSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .height(240.dp)
+                    .heightIn(min = 180.dp, max = 320.dp)
             ) {
                 // Draw bars manually for click support
-                Row(
+                LazyRow(
                     modifier = Modifier.fillMaxSize(),
                     verticalAlignment = Alignment.Bottom,
-                    horizontalArrangement = Arrangement.SpaceEvenly
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     val maxValue = values.maxOrNull() ?: 1f
-                    months.forEachIndexed { i, month ->
+                    itemsIndexed(months) { i, month ->
                         val value = values.getOrNull(i) ?: 0f
                         val barHeightRatio = if (maxValue > 0) value / maxValue else 0f
                         Column(
                             horizontalAlignment = Alignment.CenterHorizontally,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier
+                                .widthIn(min = 32.dp, max = 56.dp)
                         ) {
                             Box(
                                 modifier = Modifier
                                     .height((150.dp * barHeightRatio).coerceAtLeast(8.dp))
-                                    .width(32.dp)
+                                    .width(36.dp)
                                     .background(
                                         color = barColor,
                                         shape = RoundedCornerShape(8.dp)
