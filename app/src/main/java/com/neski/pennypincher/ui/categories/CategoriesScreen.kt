@@ -161,7 +161,7 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
 
                                     SwipeToDismiss(
                                         state = dismissState,
-                                        directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                                        directions = setOf(DismissDirection.EndToStart),
                                         background = {},
                                         dismissContent = {
                                             CategoryRow(

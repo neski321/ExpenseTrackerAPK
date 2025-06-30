@@ -23,7 +23,8 @@ fun ExpenseRow(
     paymentMethodName: String,
     onEdit: () -> Unit = {},
     onDelete: () -> Unit = {},
-    onCategoryClick: () -> Unit = {}
+    onCategoryClick: () -> Unit = {},
+    onPaymentMethodClick: () -> Unit = {}
 ) {
     val dateFormatted = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault()).format(expense.date)
 
@@ -76,7 +77,10 @@ fun ExpenseRow(
             Text(
                 text = paymentMethodName,
                 style = MaterialTheme.typography.bodySmall,
-                modifier = Modifier.padding(horizontal = 18.dp)
+                modifier = Modifier
+                    .padding(horizontal = 18.dp)
+                    .clickable { onPaymentMethodClick() },
+                color = MaterialTheme.colorScheme.primary
             )
 
             Text(

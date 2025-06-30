@@ -18,7 +18,8 @@ fun IncomeRow(
     sourceName: String,
     modifier: Modifier = Modifier,
     onEdit: (() -> Unit)? = null,
-    onDelete: (() -> Unit)? = null
+    onDelete: (() -> Unit)? = null,
+    onSourceClick: (() -> Unit)? = null
 ) {
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     val dateString = dateFormat.format(income.date)
@@ -34,22 +35,24 @@ fun IncomeRow(
             ) {
                 Column {
                     Text(dateString, style = MaterialTheme.typography.bodyMedium)
-                    Text(income.description, style = MaterialTheme.typography.bodySmall)
+                    //Text(income.description, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))
 
                 AssistChip(
-                    onClick = {},
+                    onClick = { onSourceClick?.invoke() },
                     label = { Text(sourceName) }
                 )
 
-                Spacer(modifier = Modifier.weight(1f))
+                Spacer(modifier = Modifier.width(1.dp))
 
                 Text(
                     text = "$${"%.2f".format(income.amount)}",
                     style = MaterialTheme.typography.bodyLarge
                 )
+
+                Spacer(modifier = Modifier.width(18.dp))
 
                 Row {
                     onEdit?.let {

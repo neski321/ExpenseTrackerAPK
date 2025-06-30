@@ -133,7 +133,7 @@ fun IncomeSourcesScreen(
                         }
                         SwipeToDismiss(
                             state = dismissState,
-                            directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                            directions = setOf(DismissDirection.EndToStart),
                             background = {},
                             dismissContent = {
                                 Card(
@@ -151,7 +151,7 @@ fun IncomeSourcesScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(source.name, style = MaterialTheme.typography.bodyLarge)
-                                            Text(source.type, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            //Text("Type: ${source.type}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         IconButton(onClick = {
                                             sourceToEdit = source
