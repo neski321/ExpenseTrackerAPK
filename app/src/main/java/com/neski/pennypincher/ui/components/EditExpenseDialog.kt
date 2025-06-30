@@ -72,32 +72,44 @@ fun EditExpenseDialog(
 
     if (showDatePicker) {
         val calendar = Calendar.getInstance().apply { time = date }
-        DatePickerDialog(
-            context,
-            { _, year, month, day ->
-                calendar.set(year, month, day)
-                date = calendar.time
-                showDatePicker = false
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+        DisposableEffect(showDatePicker) {
+            val dialog = DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    date = calendar.time
+                    showDatePicker = false
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+            dialog.setOnCancelListener { showDatePicker = false }
+            dialog.setOnDismissListener { showDatePicker = false }
+            dialog.show()
+            onDispose { dialog.dismiss() }
+        }
     }
 
     if (showNextDueDatePicker) {
         val calendar = Calendar.getInstance().apply { time = nextDueDate ?: Date() }
-        DatePickerDialog(
-            context,
-            { _, year, month, day ->
-                calendar.set(year, month, day)
-                nextDueDate = calendar.time
-                showNextDueDatePicker = false
-            },
-            calendar.get(Calendar.YEAR),
-            calendar.get(Calendar.MONTH),
-            calendar.get(Calendar.DAY_OF_MONTH)
-        ).show()
+        DisposableEffect(showNextDueDatePicker) {
+            val dialog = DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    calendar.set(year, month, day)
+                    nextDueDate = calendar.time
+                    showNextDueDatePicker = false
+                },
+                calendar.get(Calendar.YEAR),
+                calendar.get(Calendar.MONTH),
+                calendar.get(Calendar.DAY_OF_MONTH)
+            )
+            dialog.setOnCancelListener { showNextDueDatePicker = false }
+            dialog.setOnDismissListener { showNextDueDatePicker = false }
+            dialog.show()
+            onDispose { dialog.dismiss() }
+        }
     }
 
     val selectedCategoryName = categories.find { it.id == category }?.name ?: "Select Category"
@@ -195,18 +207,26 @@ fun EditExpenseDialog(
                         }
                     }
 
-                    OutlinedTextField(
-                        value = formattedDate,
-                        onValueChange = {},
-                        readOnly = true,
-                        label = { Text("Date of Expense") },
-                        trailingIcon = {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedTextField(
+                            value = formattedDate,
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text("Date of Expense") },
+                            modifier = Modifier.weight(1f)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        IconButton(
+                            onClick = {
+                                showDatePicker = true
+                            }
+                        ) {
                             Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
-                        },
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .clickable { showDatePicker = true }
-                    )
+                        }
+                    }
 
                     // Category Dropdown
                     ExposedDropdownMenuBox(

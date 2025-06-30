@@ -1,6 +1,6 @@
 package com.neski.pennypincher.ui.payment
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material3.*
@@ -21,12 +21,17 @@ import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditPaymentMethodDialog
-//import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.AddPaymentMethodDialog
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
+import com.neski.pennypincher.ui.components.PaymentMethodRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -124,48 +129,52 @@ fun PaymentMethodsScreen(
                 } else if (methods.isEmpty()) {
                     Text("No payment methods found.", color = getTextColor())
                 } else {
-                    methods.forEach { method ->
-                        val dismissState = dismissStates.getOrPut(method.id) { rememberDismissState() }
-                        LaunchedEffect(dismissState.currentValue) {
-                            if (
-                                dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                dismissState.isDismissed(DismissDirection.StartToEnd)
-                            ) {
-                                methodToDelete = method
-                                showConfirmDialog = true
-                            }
-                        }
-                        SwipeToDismiss(
-                            state = dismissState,
-                            directions = setOf(DismissDirection.EndToStart),
-                            background = {},
-                            dismissContent = {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 8.dp)
-                                        .clickable { onPaymentMethodClick(method.id, method.name) }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(methods, key = { it.id }) { method ->
+                            val dismissState = dismissStates.getOrPut(method.id) { rememberDismissState() }
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (
+                                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                    dismissState.isDismissed(DismissDirection.StartToEnd)
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Text(text = method.name, style = MaterialTheme.typography.bodyLarge)
-                                        Row {
-                                            IconButton(onClick = {
-                                                methodToEdit = method
-                                                showEditDialog = true
-                                            }) {
-                                                Icon(Icons.Default.Edit, contentDescription = "Edit")
-                                            }
-                                        }
-                                    }
+                                    methodToDelete = method
+                                    showConfirmDialog = true
                                 }
                             }
-                        )
+                            SwipeToDismiss(
+                                state = dismissState,
+                                directions = setOf(DismissDirection.EndToStart),
+                                background = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.Red.copy(alpha = 0.2f))
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                dismissContent = {
+                                    PaymentMethodRow(
+                                        paymentMethod = method,
+                                        onEdit = {
+                                            methodToEdit = method
+                                            showEditDialog = true
+                                        },
+                                        onClick = { onPaymentMethodClick(method.id, method.name) }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Delete
@@ -35,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
@@ -173,6 +175,7 @@ fun IncomeScreen(
                                     Box(
                                         modifier = Modifier
                                             .fillMaxSize()
+                                            .clip(RoundedCornerShape(12.dp))
                                             .background(Color.Red.copy(alpha = 0.2f))
                                             .padding(horizontal = 20.dp),
                                         contentAlignment = Alignment.CenterEnd

@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import kotlin.math.cos
 import kotlin.math.sin
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyHorizontalGrid
+import androidx.compose.foundation.lazy.grid.items
 
 @Composable
 fun SpendingPieChartSection(
@@ -114,37 +117,34 @@ fun SpendingPieChartSection(
             }
             Spacer(modifier = Modifier.height(16.dp))
             // Legend
-            Column(
-                modifier = Modifier.fillMaxWidth(),
+            LazyHorizontalGrid(
+                rows = GridCells.Adaptive(minSize = 32.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 40.dp, max = 120.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                legendItems.chunked(4).forEach { rowItems ->
+                items(legendItems) { categoryId ->
+                    val color = colors[categoryId] ?: Color.Gray
+                    val name = categoryNames[categoryId] ?: "Other"
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.Center
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier
+                            .padding(horizontal = 8.dp, vertical = 2.dp)
+                            .clickable { onSliceClick(categoryId) }
                     ) {
-                        rowItems.forEach { categoryId ->
-                            val color = colors[categoryId] ?: Color.Gray
-                            val name = categoryNames[categoryId] ?: "Other"
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                modifier = Modifier
-                                    .padding(horizontal = 8.dp)
-                                    .clickable { onSliceClick(categoryId) }
-                            ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .background(color, shape = RoundedCornerShape(3.dp))
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = name,
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurface
-                                )
-                            }
-                        }
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .background(color, shape = RoundedCornerShape(3.dp))
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
                     }
                 }
             }

@@ -1,10 +1,9 @@
 package com.neski.pennypincher.ui.income
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -24,6 +23,13 @@ import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.AddIncomeSourceDialog
 import com.neski.pennypincher.ui.components.EditIncomeSourceDialog
 import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.components.IncomeSourceRow
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -120,49 +126,52 @@ fun IncomeSourcesScreen(
                 } else if (sources.isEmpty()) {
                     Text("No income sources found.")
                 } else {
-                    sources.forEach { source ->
-                        val dismissState = dismissStates.getOrPut(source.id) { rememberDismissState() }
-                        LaunchedEffect(dismissState.currentValue) {
-                            if (
-                                dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                dismissState.isDismissed(DismissDirection.StartToEnd)
-                            ) {
-                                sourceToDelete = source
-                                showConfirmDialog = true
-                            }
-                        }
-                        SwipeToDismiss(
-                            state = dismissState,
-                            directions = setOf(DismissDirection.EndToStart),
-                            background = {},
-                            dismissContent = {
-                                Card(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(bottom = 8.dp)
-                                        .clickable { onIncomeSourceClick(source.id, source.name) }
+                    LazyColumn(
+                        modifier = Modifier.fillMaxSize(),
+                        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(sources, key = { it.id }) { source ->
+                            val dismissState = dismissStates.getOrPut(source.id) { rememberDismissState() }
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (
+                                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                    dismissState.isDismissed(DismissDirection.StartToEnd)
                                 ) {
-                                    Row(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .padding(12.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.SpaceBetween
-                                    ) {
-                                        Column(modifier = Modifier.weight(1f)) {
-                                            Text(source.name, style = MaterialTheme.typography.bodyLarge)
-                                            //Text("Type: ${source.type}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                        }
-                                        IconButton(onClick = {
-                                            sourceToEdit = source
-                                            showEditDialog = true
-                                        }) {
-                                            Icon(Icons.Default.Edit, contentDescription = "Edit")
-                                        }
-                                    }
+                                    sourceToDelete = source
+                                    showConfirmDialog = true
                                 }
                             }
-                        )
+                            SwipeToDismiss(
+                                state = dismissState,
+                                directions = setOf(DismissDirection.EndToStart),
+                                background = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.Red.copy(alpha = 0.2f))
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
+                                dismissContent = {
+                                    IncomeSourceRow(
+                                        incomeSource = source,
+                                        onEdit = {
+                                            sourceToEdit = source
+                                            showEditDialog = true
+                                        },
+                                        onClick = { onIncomeSourceClick(source.id, source.name) }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

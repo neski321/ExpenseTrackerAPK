@@ -24,7 +24,10 @@ fun IncomeRow(
     val dateFormat = SimpleDateFormat("MMM dd, yyyy", Locale.getDefault())
     val dateString = dateFormat.format(income.date)
 
-    Card(modifier = modifier.fillMaxWidth()) {
+    Card(modifier = modifier.fillMaxWidth(),
+            colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.background)
+    ) {
         Column {
             Row(
                 modifier = Modifier

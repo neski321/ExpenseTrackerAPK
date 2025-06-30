@@ -1,8 +1,10 @@
 package com.neski.pennypincher.ui.categories
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+//import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
@@ -21,10 +23,13 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.rememberDismissState
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
 import androidx.compose.material.pullrefresh.rememberPullRefreshState
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
@@ -91,6 +96,76 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
         }
     }
 
+    // Helper function to recursively display categories in a layered system
+    fun displayCategoryTree(
+        category: Category,
+        allCategories: List<Category>,
+        categoryNameMap: Map<String, String>,
+        dismissStates: MutableMap<String, androidx.compose.material.DismissState>,
+        onEdit: (Category) -> Unit,
+        onDelete: (Category) -> Unit,
+        onClick: (Category) -> Unit,
+        indentLevel: Int = 0
+    ): List<@Composable () -> Unit> {
+        val composables = mutableListOf<@Composable () -> Unit>()
+        composables.add {
+            val dismissState = dismissStates.getOrPut(category.id) { rememberDismissState() }
+            LaunchedEffect(dismissState.currentValue) {
+                if (
+                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                    dismissState.isDismissed(DismissDirection.StartToEnd)
+                ) {
+                    onDelete(category)
+                }
+            }
+            SwipeToDismiss(
+                state = dismissState,
+                directions = setOf(DismissDirection.EndToStart),
+                background = {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color.Red.copy(alpha = 0.2f))
+                            .padding(horizontal = 20.dp),
+                        contentAlignment = Alignment.CenterEnd
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Delete,
+                            contentDescription = "Delete",
+                            tint = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                dismissContent = {
+                    CategoryRow(
+                        category = category,
+                        categoryNameMap = categoryNameMap,
+                        onEdit = { onEdit(category) },
+                        onClick = { onClick(category) },
+                        indentLevel = indentLevel
+                    )
+                }
+            )
+        }
+        val children = allCategories.filter { it.parentId == category.id }.sortedBy { it.name }
+        children.forEach { child ->
+            composables.addAll(
+                displayCategoryTree(
+                    child,
+                    allCategories,
+                    categoryNameMap,
+                    dismissStates,
+                    onEdit,
+                    onDelete,
+                    onClick,
+                    indentLevel + 1
+                )
+            )
+        }
+        return composables
+    }
+
     Scaffold(
         floatingActionButton = {
             FloatingActionButton(
@@ -132,53 +207,27 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                         modifier = Modifier.fillMaxSize(),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        groupedCategories
-                            .toSortedMap() // alphabetically by parent name
-                            .forEach { (parentName, children) ->
-                                item {
-                                    Text(
-                                        text = parentName,
-                                        style = MaterialTheme.typography.titleMedium,
-                                        modifier = Modifier.padding(vertical = 4.dp),
-                                        color = getTextColor()
-                                    )
+                        val parentCategories = categories.filter { it.parentId == null }.sortedBy { it.name }
+                        parentCategories.forEach { parent ->
+                            val composables = displayCategoryTree(
+                                parent,
+                                categories,
+                                categoryNameMap,
+                                dismissStates,
+                                onEdit = {
+                                    categoryToEdit = it
+                                    showEditDialog = true
+                                },
+                                onDelete = {
+                                    categoryToDelete = it
+                                    showConfirmDialog = true
+                                },
+                                onClick = {
+                                    onCategoryClick(it.id, it.name)
                                 }
-
-                                items(children.sortedBy { it.name }, key = { it.id }) { category ->
-                                    val dismissState = dismissStates.getOrPut(category.id) {
-                                        rememberDismissState()
-                                    }
-
-                                    LaunchedEffect(dismissState.currentValue) {
-                                        if (
-                                            dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                            dismissState.isDismissed(DismissDirection.StartToEnd)
-                                        ) {
-                                            categoryToDelete = category
-                                            showConfirmDialog = true
-                                        }
-                                    }
-
-                                    SwipeToDismiss(
-                                        state = dismissState,
-                                        directions = setOf(DismissDirection.EndToStart),
-                                        background = {},
-                                        dismissContent = {
-                                            CategoryRow(
-                                                category = category,
-                                                categoryNameMap = categoryNameMap,
-                                                onEdit = {
-                                                    categoryToEdit = category
-                                                    showEditDialog = true
-                                                },
-                                                onClick = {
-                                                    onCategoryClick(category.id, category.name)
-                                                }
-                                            )
-                                        }
-                                    )
-                                }
-                            }
+                            )
+                            composables.forEach { item { it() } }
+                        }
                     }
                 }
             }

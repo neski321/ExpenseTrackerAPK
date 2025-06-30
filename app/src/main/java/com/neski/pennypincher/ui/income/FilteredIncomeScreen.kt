@@ -45,7 +45,7 @@ fun FilteredIncomeScreen(
     var incomeSources by remember { mutableStateOf<List<IncomeSource>>(emptyList()) }
     var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
     val incomeSourceMap = incomeSources.associateBy({ it.id }, { it.name })
-    val currencyMap = currencies.associateBy({ it.id }, { it })
+    //val currencyMap = currencies.associateBy({ it.id }, { it })
 
     var showConfirmDialog by remember { mutableStateOf(false) }
     var incomeToDelete by remember { mutableStateOf<Income?>(null) }
@@ -84,86 +84,128 @@ fun FilteredIncomeScreen(
     }
 
     Scaffold(
-        topBar = {
-            val titleComposable: @Composable () -> Unit = when {
-                incomeSourceName != null -> {
-                    @Composable {
-                        Column(modifier = Modifier.fillMaxWidth().padding(bottom = 2.dp)) {
-                            Text("Income for $incomeSourceName", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor())
-                            Text(
-                                "View your income for this source.",
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.padding(top = 2.dp)
-                            )
-                        }
-                    }
-                }
-                else -> {
-                    @Composable { Text("Filtered Income", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = getTextColor()) }
-                }
-            }
-            if (onBack != null) {
-                TopAppBar(
-                    title = { titleComposable() },
-                    navigationIcon = {
+        snackbarHost = { SnackbarHost(hostState = snackbarHostState) },
+        contentWindowInsets = WindowInsets(top = 2.dp, bottom = 2.dp)
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .padding(12.dp)
+                .fillMaxSize()
+        ) {
+            Column(
+                modifier = Modifier.fillMaxSize()
+            ) {
+                // Breadcrumb and back button
+                if (onBack != null) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
                         IconButton(onClick = onBack) {
                             Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
                         }
-                    }
-                )
-            } else {
-                TopAppBar(title = { titleComposable() })
-            }
-        },
-        snackbarHost = { SnackbarHost(hostState = snackbarHostState) }
-    ) { innerPadding ->
-        Box(modifier = Modifier.padding(innerPadding).padding(16.dp)) {
-            if (isLoading) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                    LoadingSpinner(size = 80, showText = true, loadingText = "Loading filtered income...")
-                }
-            } else if (incomes.isEmpty()) {
-                val filterType = when {
-                    incomeSourceName != null -> "this income source"
-                    else -> "the selected filter"
-                }
-                Text("No income found for $filterType.", color = getTextColor())
-            } else {
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    items(incomes, key = { it.id }) { income ->
-                        val dismissState = dismissStates.getOrPut(income.id) { rememberDismissState() }
-                        val sourceName = incomeSourceMap[income.incomeSourceId] ?: "Unknown"
-
-                        LaunchedEffect(dismissState.currentValue) {
-                            if (
-                                dismissState.isDismissed(DismissDirection.EndToStart) ||
-                                dismissState.isDismissed(DismissDirection.StartToEnd)
-                            ) {
-                                incomeToDelete = income
-                                showConfirmDialog = true
-                            }
-                        }
-
-                        SwipeToDismiss(
-                            state = dismissState,
-                            directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-                            background = {},
-                            dismissContent = {
-                                IncomeRow(
-                                    income = income,
-                                    sourceName = sourceName,
-                                    onEdit = {
-                                        incomeToEdit = income
-                                        showEditDialog = true
-                                    },
-                                    onDelete = { deleteIncome(income) },
-                                    onSourceClick = {
-                                        onNavigateToFilteredIncome?.invoke(income.incomeSourceId, sourceName)
-                                    }
-                                )
-                            }
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Back to Income",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.primary
                         )
+                    }
+                }
+                
+                // Title and subtitle
+                Text(
+                    text = when {
+                        incomeSourceName != null -> "Income for $incomeSourceName"
+                        else -> "Filtered Income"
+                    },
+                    style = MaterialTheme.typography.headlineMedium.copy(fontWeight = FontWeight.Bold),
+                    color = getTextColor()
+                )
+                Text(
+                    text = when {
+                        incomeSourceName != null -> "View your income for this source."
+                        else -> "Track your filtered income."
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = getTextColor()
+                )
+                Spacer(Modifier.height(12.dp))
+                if (isLoading) {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        LoadingSpinner(size = 80, showText = true, loadingText = "Loading filtered income...")
+                    }
+                } else if (incomes.isEmpty()) {
+                    val filterType = when {
+                        incomeSourceName != null -> "this income source"
+                        else -> "the selected filter"
+                    }
+                    Text("No income found for $filterType.", color = getTextColor())
+                } else {
+                    // Table header row
+                    Surface(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(bottom = 2.dp),
+                        shape = MaterialTheme.shapes.medium,
+                        tonalElevation = 1.dp,
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text("Date", modifier = Modifier.weight(1.8f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Income Source", modifier = Modifier.weight(2.3f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Amount", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                            Text("Actions", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelMedium, color = getTextColor())
+                        }
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(bottom = 50.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(incomes, key = { it.id }) { income ->
+                            val dismissState = dismissStates.getOrPut(income.id) { rememberDismissState() }
+                            val sourceName = incomeSourceMap[income.incomeSourceId] ?: "Unknown"
+
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (
+                                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                    dismissState.isDismissed(DismissDirection.StartToEnd)
+                                ) {
+                                    incomeToDelete = income
+                                    showConfirmDialog = true
+                                }
+                            }
+
+                            SwipeToDismiss(
+                                state = dismissState,
+                                directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
+                                background = {},
+                                dismissContent = {
+                                    IncomeRow(
+                                        income = income,
+                                        sourceName = sourceName,
+                                        onEdit = {
+                                            incomeToEdit = income
+                                            showEditDialog = true
+                                        },
+                                        onDelete = { deleteIncome(income) },
+                                        onSourceClick = {
+                                            onNavigateToFilteredIncome?.invoke(income.incomeSourceId, sourceName)
+                                        }
+                                    )
+                                }
+                            )
+                        }
                     }
                 }
             }

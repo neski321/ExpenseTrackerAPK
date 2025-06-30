@@ -12,6 +12,7 @@ import androidx.compose.runtime.*
 import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.sp
 import com.neski.pennypincher.ui.auth.LoginScreen
 import com.neski.pennypincher.ui.auth.SignupScreen
 import com.neski.pennypincher.ui.dashboard.DashboardScreen
@@ -119,7 +120,11 @@ class MainActivity : ComponentActivity() {
                             Scaffold(
                                 topBar = {
                                     TopAppBar(
-                                        title = { Text("PennyPincher") },
+                                        title = {
+                                            Text("PennyPincher",
+                                                color = MaterialTheme.colorScheme.primary,
+                                                fontSize = 25.sp
+                                                ) },
                                         navigationIcon = {
                                             IconButton(onClick = {
                                                 scope.launch { drawerState.open() }
