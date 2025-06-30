@@ -1,8 +1,6 @@
 package com.neski.pennypincher.ui.settings
 
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.*
@@ -24,6 +22,9 @@ fun CurrencyManagementSection(userId: String) {
     var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
     var showAddDialog by remember { mutableStateOf(false) }
     var editCurrency by remember { mutableStateOf<Currency?>(null) }
+    var showCurrencyList by remember { mutableStateOf(false) }
+    var currencyToDelete by remember { mutableStateOf<Currency?>(null) }
+    var showConfirmDialog by remember { mutableStateOf(false) }
 
     // Fetch existing currencies
     LaunchedEffect(userId) {
@@ -45,24 +46,58 @@ fun CurrencyManagementSection(userId: String) {
                     Text("Add New Currency")
                 }
 
-                LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(currencies) { currency ->
-                        CurrencyCard(
-                            currency = currency,
-                            onEdit = { editCurrency = currency },
-                            onDelete = {
-                                scope.launch {
+                Button(onClick = { showCurrencyList = !showCurrencyList }) {
+                    Text(if (showCurrencyList) "Hide Currency List" else "View Currency List")
+                }
+
+                if (showCurrencyList) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        currencies.forEach { currency ->
+                            CurrencyCard(
+                                currency = currency,
+                                onEdit = { editCurrency = currency },
+                                onDelete = {
                                     if (currency.code.uppercase() == "USD") {
-                                        snackbarHostState.showSnackbar("Cannot delete base currency.")
+                                        scope.launch {
+                                            snackbarHostState.showSnackbar("Cannot delete base currency.")
+                                        }
                                     } else {
-                                        CurrencyRepository.deleteCurrency(userId, currency.id)
-                                        currencies = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true)
-                                        snackbarHostState.showSnackbar("Currency deleted.")
+                                        currencyToDelete = currency
+                                        showConfirmDialog = true
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
+                }
+
+                if (showConfirmDialog && currencyToDelete != null) {
+                    AlertDialog(
+                        onDismissRequest = { showConfirmDialog = false },
+                        title = { Text("Confirm Delete") },
+                        text = { Text("Are you sure you want to delete currency ${currencyToDelete!!.code} (${currencyToDelete!!.name})?") },
+                        confirmButton = {
+                            TextButton(onClick = {
+                                scope.launch {
+                                    CurrencyRepository.deleteCurrency(userId, currencyToDelete!!.id)
+                                    currencies = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true)
+                                    snackbarHostState.showSnackbar("Currency deleted.")
+                                    showConfirmDialog = false
+                                    currencyToDelete = null
+                                }
+                            }) {
+                                Text("Delete")
+                            }
+                        },
+                        dismissButton = {
+                            TextButton(onClick = {
+                                showConfirmDialog = false
+                                currencyToDelete = null
+                            }) {
+                                Text("Cancel")
+                            }
+                        }
+                    )
                 }
             }
         }

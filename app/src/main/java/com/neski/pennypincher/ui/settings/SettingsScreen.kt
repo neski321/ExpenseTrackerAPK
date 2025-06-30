@@ -10,6 +10,7 @@ import com.neski.pennypincher.data.repository.CurrencyRepository
 import com.neski.pennypincher.data.repository.ExpenseRepository
 import com.neski.pennypincher.data.repository.IncomeRepository
 import kotlinx.coroutines.launch
+import androidx.compose.foundation.lazy.LazyColumn
 
 @Composable
 fun SettingsScreen(userId: String) {
@@ -29,16 +30,26 @@ fun SettingsScreen(userId: String) {
 
     val netBalance = totalIncome - totalExpenses
 
-    Column(modifier = Modifier
-        .fillMaxSize()
-        .padding(16.dp),
+    LazyColumn(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(24.dp)
     ) {
-        Text("Settings", style = MaterialTheme.typography.headlineSmall)
-        Text("Manage application currencies, account, financial overview, and data.")
-
-        AccountSettingsSection()
-        FinancialOverviewSection(userId = userId)
-        CurrencyManagementSection(userId = userId)
+        item {
+            Text("Settings", style = MaterialTheme.typography.headlineSmall)
+        }
+        item {
+            Text("Manage application currencies, account, financial overview, and data.")
+        }
+        item {
+            AccountSettingsSection()
+        }
+        item {
+            FinancialOverviewSection(userId = userId)
+        }
+        item {
+            CurrencyManagementSection(userId = userId)
+        }
     }
 }

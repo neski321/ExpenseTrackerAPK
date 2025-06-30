@@ -1,7 +1,6 @@
 package com.neski.pennypincher.ui.components
 
 import android.app.DatePickerDialog
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
@@ -313,22 +312,29 @@ fun EditExpenseDialog(
                     }
 
                     if (isSubscription) {
-                        Column {
-                            Text("Next Due Date", style = MaterialTheme.typography.bodyMedium)
+                        Text("Next Due Date", style = MaterialTheme.typography.bodyMedium)
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
                             OutlinedTextField(
                                 value = formattedNextDueDate,
                                 onValueChange = {},
                                 readOnly = true,
                                 placeholder = { Text("Pick next due date") },
-                                trailingIcon = {
-                                    Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
-                                },
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable { showNextDueDatePicker = true }
+                                label = { Text("Next Due Date") },
+                                modifier = Modifier.weight(1f)
                             )
-                            Text("Set the date for the next billing cycle.", style = MaterialTheme.typography.bodySmall)
+                            Spacer(modifier = Modifier.width(8.dp))
+                            IconButton(
+                                onClick = {
+                                    showNextDueDatePicker = true
+                                }
+                            ) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Pick Date")
+                            }
                         }
+                        Text("Set the date for the next billing cycle.", style = MaterialTheme.typography.bodySmall)
                     }
                 }
                 Row(
