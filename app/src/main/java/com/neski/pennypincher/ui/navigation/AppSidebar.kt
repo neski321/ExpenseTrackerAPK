@@ -2,7 +2,8 @@ package com.neski.pennypincher.ui.navigation
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -12,7 +13,6 @@ import androidx.compose.material.icons.automirrored.filled.TrendingUp
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material.icons.filled.CreditCard
 import androidx.compose.material.icons.filled.Search
-
 
 @Composable
 fun AppSidebar(
@@ -42,13 +42,24 @@ fun AppSidebar(
             .width(260.dp)
     ) {
         Column(modifier = Modifier.padding(vertical = 24.dp)) {
-            Text(
-                text = "PennyPincher",
-                fontSize = 30.sp,
-                color = colors.primary,
-                style = MaterialTheme.typography.titleLarge,
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 24.dp)
-            )
+            ) {
+                Icon(
+                    imageVector = Icons.Default.AttachMoney,
+                    contentDescription = "App Icon",
+                    tint = colors.primary,
+                    modifier = Modifier.size(32.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "PennyPincher",
+                    fontSize = 30.sp,
+                    color = colors.primary,
+                    style = MaterialTheme.typography.titleLarge
+                )
+            }
 
             items.forEach { item ->
                 NavigationDrawerItem(
