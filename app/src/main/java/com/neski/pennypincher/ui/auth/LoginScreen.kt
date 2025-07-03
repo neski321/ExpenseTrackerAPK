@@ -23,6 +23,8 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.luminance
 import com.neski.pennypincher.data.repository.AuthRepository
 import kotlinx.coroutines.launch
+import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.theme.getTextColor
 
 @Composable
 fun LoginScreen(
@@ -30,10 +32,13 @@ fun LoginScreen(
     onNavigateToSignup: () -> Unit,
 ) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
     var showPassword by remember { mutableStateOf(false) }
     var errorMsg by remember { mutableStateOf<String?>(null) }
+    var isLoading by remember { mutableStateOf(false) }
+    var isResetting by remember { mutableStateOf(false) }
 
     val colorScheme = MaterialTheme.colorScheme
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -44,7 +49,7 @@ fun LoginScreen(
     }
 
     errorMsg?.let {
-        Toast.makeText(LocalContext.current, it, Toast.LENGTH_LONG).show()
+        Toast.makeText(context, it, Toast.LENGTH_LONG).show()
         errorMsg = null
     }
 
@@ -110,23 +115,61 @@ fun LoginScreen(
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                Spacer(modifier = Modifier.height(4.dp))
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                    if (isResetting) {
+                        LoadingSpinner(size = 16, showText = false)
+                        Spacer(modifier = Modifier.width(8.dp))
+                    }
+                    TextButton(onClick = {
+                        if (email.isBlank()) {
+                            Toast.makeText(context, "Please enter your email to reset password.", Toast.LENGTH_SHORT).show()
+                        } else {
+                            isResetting = true
+                            scope.launch {
+                                val result = AuthRepository.sendPasswordResetEmail(email)
+                                isResetting = false
+                                if (result.isSuccess) {
+                                    Toast.makeText(context, "Password reset email sent!", Toast.LENGTH_LONG).show()
+                                } else {
+                                    Toast.makeText(context, result.exceptionOrNull()?.message ?: "Failed to send reset email.", Toast.LENGTH_LONG).show()
+                                }
+                            }
+                        }
+                    }) {
+                        Text("Forgot Password?", color = colorScheme.primary)
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Button(
                     onClick = {
                         scope.launch {
-                            val result = AuthRepository.signIn(email, password)
-                            result
-                                .onSuccess { onLoginSuccess() }
-                                .onFailure { errorMsg = it.message ?: "Login failed" }
+                            isLoading = true
+                            try {
+                                val result = AuthRepository.signIn(email, password)
+                                result
+                                    .onSuccess { onLoginSuccess() }
+                                    .onFailure { errorMsg = it.message ?: "Login failed" }
+                            } finally {
+                                isLoading = false
+                            }
                         }
                     },
                     modifier = Modifier.fillMaxWidth(),
-                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary)
+                    colors = ButtonDefaults.buttonColors(containerColor = colorScheme.primary),
+                    enabled = !isLoading && email.isNotBlank() && password.isNotBlank()
                 ) {
-                    Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Log In", color = colorScheme.onPrimary)
+                    if (isLoading) {
+                        LoadingSpinner(size = 20, showText = false)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Logging in...", color = getTextColor())
+                    } else {
+                        Icon(Icons.AutoMirrored.Filled.Login, contentDescription = null)
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Log In", color = getTextColor())
+                    }
                 }
 
                 Spacer(modifier = Modifier.height(16.dp))
