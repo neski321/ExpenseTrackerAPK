@@ -68,42 +68,47 @@ fun FilteredExpensesScreen(
     var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
+    fun filterExpenses(
+        allExpenses: List<Expense>,
+        categories: List<Category>,
+        month: String?,
+        categoryId: String?,
+        paymentMethodId: String?
+    ): List<Expense> {
+        return allExpenses.filter { expense ->
+            val matchesMonth = month?.let {
+                val parts = it.split(" ")
+                val monthNum = try {
+                    java.text.DateFormatSymbols().months.indexOfFirst { m -> m.startsWith(parts[0], ignoreCase = true) }
+                } catch (e: Exception) { -1 }
+                val yearNum = parts.getOrNull(1)?.toIntOrNull() ?: -1
+                if (monthNum >= 0 && yearNum > 0) {
+                    val cal = java.util.Calendar.getInstance().apply { time = expense.date }
+                    cal.get(java.util.Calendar.MONTH) == monthNum && cal.get(java.util.Calendar.YEAR) == yearNum
+                } else false
+            } ?: true
+            val matchesCategory = categoryId?.let {
+                val allCategoryIds = mutableSetOf(it)
+                fun findChildren(parentId: String) {
+                    categories.filter { c -> c.parentId == parentId }.forEach { c ->
+                        allCategoryIds.add(c.id)
+                        findChildren(c.id)
+                    }
+                }
+                findChildren(it)
+                allCategoryIds.contains(expense.categoryId)
+            } ?: true
+            val matchesPayment = paymentMethodId?.let { expense.paymentMethodId == it } ?: true
+            matchesMonth && matchesCategory && matchesPayment
+        }
+    }
+
     LaunchedEffect(userId, month, categoryId, paymentMethodId) {
         scope.launch {
             val allExpenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
             categories = CategoryRepository.getAllCategories(userId)
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
-            val filtered = when {
-                month != null -> {
-                    val parts = month.split(" ")
-                    val monthNum = try {
-                        java.text.DateFormatSymbols().months.indexOfFirst { it.startsWith(parts[0], ignoreCase = true) }
-                    } catch (e: Exception) { -1 }
-                    val yearNum = parts.getOrNull(1)?.toIntOrNull() ?: -1
-                    if (monthNum >= 0 && yearNum > 0) {
-                        allExpenses.filter {
-                            val cal = java.util.Calendar.getInstance().apply { time = it.date }
-                            cal.get(java.util.Calendar.MONTH) == monthNum && cal.get(java.util.Calendar.YEAR) == yearNum
-                        }
-                    } else emptyList()
-                }
-                categoryId != null -> {
-                    val allCategoryIds = mutableSetOf(categoryId)
-                    fun findChildren(parentId: String) {
-                        categories.filter { it.parentId == parentId }.forEach {
-                            allCategoryIds.add(it.id)
-                            findChildren(it.id)
-                        }
-                    }
-                    findChildren(categoryId)
-                    allExpenses.filter { it.categoryId in allCategoryIds }
-                }
-                paymentMethodId != null -> {
-                    allExpenses.filter { it.paymentMethodId == paymentMethodId }
-                }
-                else -> emptyList()
-            }
-            expenses = filtered
+            expenses = filterExpenses(allExpenses, categories, month, categoryId, paymentMethodId)
             isLoading = false
         }
     }
@@ -322,10 +327,10 @@ fun FilteredExpensesScreen(
                     onUpdate = { updatedExpense ->
                         scope.launch {
                             ExpenseRepository.updateExpense(userId, updatedExpense)
-                            // Force refresh all data
-                            expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
+                            val allExpenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
                             categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
                             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId, forceRefresh = true)
+                            expenses = filterExpenses(allExpenses, categories, month, categoryId, paymentMethodId)
                             showEditDialog = false
                             expenseToEdit = null
                             snackbarHostState.showSnackbar("Expense updated successfully")

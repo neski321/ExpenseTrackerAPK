@@ -164,7 +164,11 @@ class MainActivity : ComponentActivity() {
                                             FilteredExpensesScreen(
                                                 userId = userId,
                                                 month = month,
-                                                onBack = { selectedRoute = "dashboard" }
+                                                onBack = { selectedRoute = "dashboard" },
+                                                onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                    paymentMethodOriginRoute = selectedRoute
+                                                    selectedRoute = "expensesByMonthAndPaymentMethod:$month:$paymentMethodId:$paymentMethodName"
+                                                }
                                             )
                                         }
                                         selectedRoute == "income" -> IncomeScreen(
@@ -224,6 +228,10 @@ class MainActivity : ComponentActivity() {
                                                 onNavigateToCategory = { newCategoryId, newCategoryName ->
                                                     categoryStack.add(newCategoryId to newCategoryName)
                                                     selectedRoute = "expensesByCategory:$newCategoryId:$newCategoryName"
+                                                },
+                                                onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                    paymentMethodOriginRoute = selectedRoute
+                                                    selectedRoute = "expensesByCategoryAndPaymentMethod:$categoryId:$categoryName:$paymentMethodId:$paymentMethodName"
                                                 }
                                             )
                                         }
@@ -246,7 +254,54 @@ class MainActivity : ComponentActivity() {
                                                     selectedRoute = "expensesByCategory:$categoryId:$categoryName"
                                                 },
                                                 onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
+                                                    paymentMethodOriginRoute = selectedRoute
                                                     selectedRoute = "expensesByPaymentMethod:$newPaymentMethodId:$newPaymentMethodName"
+                                                }
+                                            )
+                                        }
+                                        selectedRoute.startsWith("expensesByCategoryAndPaymentMethod:") -> {
+                                            val parts = selectedRoute.removePrefix("expensesByCategoryAndPaymentMethod:").split(":")
+                                            val categoryId = parts.getOrNull(0) ?: ""
+                                            val categoryName = parts.getOrNull(1) ?: ""
+                                            val paymentMethodId = parts.getOrNull(2) ?: ""
+                                            val paymentMethodName = parts.drop(3).joinToString(":")
+                                            FilteredExpensesScreen(
+                                                userId = userId,
+                                                categoryId = categoryId,
+                                                categoryName = categoryName,
+                                                paymentMethodId = paymentMethodId,
+                                                paymentMethodName = paymentMethodName,
+                                                onBack = {
+                                                    selectedRoute = paymentMethodOriginRoute ?: "expensesByCategory:$categoryId:$categoryName"
+                                                    paymentMethodOriginRoute = null
+                                                },
+                                                onNavigateToCategory = { newCategoryId, newCategoryName ->
+                                                    categoryStack.add(newCategoryId to newCategoryName)
+                                                    selectedRoute = "expensesByCategoryAndPaymentMethod:$newCategoryId:$newCategoryName:$paymentMethodId:$paymentMethodName"
+                                                },
+                                                onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
+                                                    paymentMethodOriginRoute = selectedRoute
+                                                    selectedRoute = "expensesByCategoryAndPaymentMethod:$categoryId:$categoryName:$newPaymentMethodId:$newPaymentMethodName"
+                                                }
+                                            )
+                                        }
+                                        selectedRoute.startsWith("expensesByMonthAndPaymentMethod:") -> {
+                                            val parts = selectedRoute.removePrefix("expensesByMonthAndPaymentMethod:").split(":")
+                                            val month = parts.getOrNull(0) ?: ""
+                                            val paymentMethodId = parts.getOrNull(1) ?: ""
+                                            val paymentMethodName = parts.drop(2).joinToString(":")
+                                            FilteredExpensesScreen(
+                                                userId = userId,
+                                                month = month,
+                                                paymentMethodId = paymentMethodId,
+                                                paymentMethodName = paymentMethodName,
+                                                onBack = {
+                                                    selectedRoute = paymentMethodOriginRoute ?: "expensesByMonth:$month"
+                                                    paymentMethodOriginRoute = null
+                                                },
+                                                onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
+                                                    paymentMethodOriginRoute = selectedRoute
+                                                    selectedRoute = "expensesByMonthAndPaymentMethod:$month:$newPaymentMethodId:$newPaymentMethodName"
                                                 }
                                             )
                                         }
