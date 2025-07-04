@@ -40,7 +40,7 @@ fun DashboardScreen(
     userId: String,
     onNavigate: (String) -> Unit,
     onNavigateToExpensesByMonth: (String) -> Unit = {},
-    categoryStack: MutableList<Pair<String, String>> = mutableListOf(),
+    categoryStack: List<Pair<String, String>> = emptyList(),
     setCategoryOriginRoute: ((String) -> Unit)? = null
 ) {
     val scope = rememberCoroutineScope()
@@ -233,8 +233,6 @@ fun DashboardScreen(
                     onSliceClick = { categoryId ->
                         val cat = categories.find { it.id == categoryId }
                         if (cat != null) {
-                            categoryStack.clear()
-                            categoryStack.add(cat.id to cat.name)
                             setCategoryOriginRoute?.invoke("dashboard")
                             onNavigate("expensesByCategory:${cat.id}:${cat.name}")
                         }

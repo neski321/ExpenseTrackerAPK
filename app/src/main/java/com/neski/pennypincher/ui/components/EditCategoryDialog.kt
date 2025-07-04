@@ -11,7 +11,9 @@ import com.neski.pennypincher.data.models.Category
 import com.neski.pennypincher.data.repository.CategoryRepository
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ExpandMore
 import com.neski.pennypincher.ui.theme.getTextColor
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -29,6 +31,8 @@ fun EditCategoryDialog(
     var isLoading by remember { mutableStateOf(false) }
 
     val parentOptions = allCategories.filter { it.id != category.id }
+
+    val expandedParents = remember { mutableStateMapOf<String, Boolean>() }
 
     Dialog(onDismissRequest = onDismiss) {
         Surface(
@@ -76,7 +80,7 @@ fun EditCategoryDialog(
                             label = { Text("Parent Category (Optional)") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded) },
                             modifier = Modifier
-                                .menuAnchor() // ✅ NEW SYNTAX
+                                .menuAnchor()
                                 .fillMaxWidth()
                         )
 
@@ -92,29 +96,45 @@ fun EditCategoryDialog(
                                     expanded = false
                                 }
                             )
-
-                            // Group categories by parent (or "Uncategorized")
-                            val grouped = parentOptions
-                                .filter { it.id != category.id } // prevent selecting itself
-                                .sortedBy { it.name }
-                                .groupBy { parentOptions.find { p -> p.id == it.parentId }?.name ?: "Parent Categories" }
-
-                            grouped.forEach { (groupName, children) ->
-                                // Group Header
-                                DropdownMenuItem(
-                                    text = {
-                                        Text(
-                                            text = groupName,
-                                            style = MaterialTheme.typography.labelMedium,
-                                            color = MaterialTheme.colorScheme.primary
+                            // Nested parent/child structure
+                            val parents = parentOptions.filter { it.parentId == null }.sortedBy { it.name }
+                            val childrenByParent = parentOptions.filter { it.parentId != null }.groupBy { it.parentId }
+                            parents.forEach { parent ->
+                                val children = childrenByParent[parent.id] ?: emptyList()
+                                if (children.isNotEmpty()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                expandedParents[parent.id] = !(expandedParents[parent.id] ?: true)
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (expandedParents[parent.id] ?: true) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                                                contentDescription = if (expandedParents[parent.id] ?: true) "Collapse" else "Expand"
+                                            )
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(parent.name) },
+                                            onClick = {
+                                                selectedParentId = parent.id
+                                                expanded = false
+                                            },
+                                            modifier = Modifier.weight(1f)
                                         )
-                                    },
-                                    enabled = false, // Make it unclickable
-                                    onClick = {}
-                                )
-
-                                // Items in that group
-                                children.forEach { parent ->
+                                    }
+                                    if (expandedParents[parent.id] ?: true) {
+                                        children.sortedBy { it.name }.forEach { child ->
+                                            DropdownMenuItem(
+                                                text = { Row { Spacer(Modifier.width(48.dp)); Text(child.name) } },
+                                                onClick = {
+                                                    selectedParentId = child.id
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                } else {
                                     DropdownMenuItem(
                                         text = { Text(parent.name) },
                                         onClick = {
@@ -125,7 +145,6 @@ fun EditCategoryDialog(
                                 }
                             }
                         }
-
                     }
                 }
                 Spacer(modifier = Modifier.height(12.dp))

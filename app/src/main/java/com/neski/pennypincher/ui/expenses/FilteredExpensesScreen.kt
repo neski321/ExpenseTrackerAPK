@@ -341,3 +341,4 @@ fun FilteredExpensesScreen(
         }
     }
 }
+

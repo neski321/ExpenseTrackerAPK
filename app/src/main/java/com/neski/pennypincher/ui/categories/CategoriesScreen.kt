@@ -23,7 +23,9 @@ import kotlinx.coroutines.launch
 import androidx.compose.material.SwipeToDismiss
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.rememberDismissState
 import androidx.compose.material.pullrefresh.PullRefreshIndicator
 import androidx.compose.material.pullrefresh.pullRefresh
@@ -50,6 +52,7 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     var showEditDialog by remember { mutableStateOf(false) }
     var categoryToEdit by remember { mutableStateOf<Category?>(null) }
     var categoryNameMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
+    val expandedMap = remember { mutableStateMapOf<String, Boolean>() }
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -86,12 +89,13 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     fun deleteCategory(category: Category) {
         scope.launch {
             CategoryRepository.deleteCategory(userId, category.id)
-            val updated = categories.filterNot { it.id == category.id }
-            categories = updated
-            groupedCategories = updated
+            // Force refresh from Firebase after deletion
+            val fetched = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+            categories = fetched.sortedBy { it.name }
+            groupedCategories = fetched
                 .sortedBy { it.name }
                 .groupBy { parent ->
-                    updated.find { it.id == parent.parentId }?.name ?: "Parent"
+                    fetched.find { it.id == parent.parentId }?.name ?: "Parent"
                 }
         }
     }
@@ -108,6 +112,8 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
         indentLevel: Int = 0
     ): List<@Composable () -> Unit> {
         val composables = mutableListOf<@Composable () -> Unit>()
+        val children = allCategories.filter { it.parentId == category.id }.sortedBy { it.name }
+        val hasChildren = children.isNotEmpty()
         composables.add {
             val dismissState = dismissStates.getOrPut(category.id) { rememberDismissState() }
             LaunchedEffect(dismissState.currentValue) {
@@ -138,30 +144,46 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                     }
                 },
                 dismissContent = {
-                    CategoryRow(
-                        category = category,
-                        categoryNameMap = categoryNameMap,
-                        onEdit = { onEdit(category) },
-                        onClick = { onClick(category) },
-                        indentLevel = indentLevel
-                    )
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        if (hasChildren) {
+                            IconButton(
+                                onClick = { expandedMap[category.id] = !(expandedMap[category.id] ?: true) },
+                                modifier = Modifier.size(24.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (expandedMap[category.id] ?: true) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                                    contentDescription = if (expandedMap[category.id] ?: true) "Collapse" else "Expand"
+                                )
+                            }
+                        } else {
+                            Spacer(Modifier.width(24.dp))
+                        }
+                        CategoryRow(
+                            category = category,
+                            categoryNameMap = categoryNameMap,
+                            onEdit = { onEdit(category) },
+                            onClick = { onClick(category) },
+                            indentLevel = indentLevel
+                        )
+                    }
                 }
             )
         }
-        val children = allCategories.filter { it.parentId == category.id }.sortedBy { it.name }
-        children.forEach { child ->
-            composables.addAll(
-                displayCategoryTree(
-                    child,
-                    allCategories,
-                    categoryNameMap,
-                    dismissStates,
-                    onEdit,
-                    onDelete,
-                    onClick,
-                    indentLevel + 1
+        if (!hasChildren || (expandedMap[category.id] ?: true)) {
+            children.forEach { child ->
+                composables.addAll(
+                    displayCategoryTree(
+                        child,
+                        allCategories,
+                        categoryNameMap,
+                        dismissStates,
+                        onEdit,
+                        onDelete,
+                        onClick,
+                        indentLevel + 1
+                    )
                 )
-            )
+            }
         }
         return composables
     }
@@ -205,7 +227,8 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
                 } else {
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                        contentPadding = PaddingValues(bottom = 96.dp)
                     ) {
                         val parentCategories = categories.filter { it.parentId == null }.sortedBy { it.name }
                         parentCategories.forEach { parent ->

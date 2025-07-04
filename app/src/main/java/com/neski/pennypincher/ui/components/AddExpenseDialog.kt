@@ -10,6 +10,8 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -23,6 +25,7 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import com.neski.pennypincher.ui.theme.getTextColor
+
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -73,6 +76,7 @@ fun AddExpenseDialog(
     var currencyExpanded by remember { mutableStateOf(false) }
 
     var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
+    val expandedParents = remember { mutableStateMapOf<String, Boolean>() }
     //val currencyMap = currencies.associateBy { it.id }
     //val selectedCurrencyLabel = currencyMap[currency]?.let { "${it.symbol} ${it.code}" } ?: "Select Currency"
 
@@ -274,21 +278,48 @@ fun AddExpenseDialog(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
-                            val grouped = categories.groupBy { cat ->
-                                categories.find { it.id == cat.parentId }?.name ?: "Parent"
-                            }.toSortedMap()
-
-                            grouped.forEach { (parentName, subcats) ->
-                                DropdownMenuItem(
-                                    text = { Text(parentName.uppercase(), style = MaterialTheme.typography.labelMedium) },
-                                    onClick = {},
-                                    enabled = false
-                                )
-                                subcats.sortedBy { it.name }.forEach { cat ->
+                            val parents = categories.filter { it.parentId == null }.sortedBy { it.name }
+                            val childrenByParent = categories.filter { it.parentId != null }.groupBy { it.parentId }
+                            parents.forEach { parent ->
+                                val children = childrenByParent[parent.id] ?: emptyList()
+                                if (children.isNotEmpty()) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        IconButton(
+                                            onClick = {
+                                                expandedParents[parent.id] = !(expandedParents[parent.id] ?: true)
+                                            },
+                                            modifier = Modifier.size(24.dp)
+                                        ) {
+                                            Icon(
+                                                imageVector = if (expandedParents[parent.id] ?: true) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
+                                                contentDescription = if (expandedParents[parent.id] ?: true) "Collapse" else "Expand"
+                                            )
+                                        }
+                                        DropdownMenuItem(
+                                            text = { Text(parent.name) },
+                                            onClick = {
+                                                category = parent.id
+                                                expanded = false
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
+                                    }
+                                    if (expandedParents[parent.id] ?: true) {
+                                        children.sortedBy { it.name }.forEach { child ->
+                                            DropdownMenuItem(
+                                                text = { Row { Spacer(Modifier.width(48.dp)); Text(child.name) } },
+                                                onClick = {
+                                                    category = child.id
+                                                    expanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                } else {
                                     DropdownMenuItem(
-                                        text = { Text(cat.name) },
+                                        text = { Text(parent.name) },
                                         onClick = {
-                                            category = cat.id
+                                            category = parent.id
                                             expanded = false
                                         }
                                     )

@@ -38,7 +38,11 @@ import com.neski.pennypincher.ui.theme.getTextColor
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @Composable
-fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String) -> Unit)? = null) {
+fun SearchExpensesScreen(
+    userId: String, 
+    onNavigateToCategory: ((String, String) -> Unit)? = null,
+    onNavigateToFilteredExpenses: ((String, String) -> Unit)? = null
+) {
     val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(true) }
 
@@ -405,46 +409,69 @@ fun SearchExpensesScreen(userId: String, onNavigateToCategory: ((String, String)
                 modifier = Modifier.fillMaxSize(),
                 verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                items(filteredExpenses, key = { it.id }) { expense ->
-                    val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
-                    val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
-                    val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
-
-                    LaunchedEffect(dismissState.currentValue) {
-                        if (
-                            dismissState.isDismissed(DismissDirection.EndToStart) ||
-                            dismissState.isDismissed(DismissDirection.StartToEnd)
+                if (filteredExpenses.isEmpty()) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 32.dp),
+                            contentAlignment = Alignment.Center
                         ) {
-                            expenseToDelete = expense
-                            showConfirmDialog = true
-                        }
-                    }
-
-                    SwipeToDismiss(
-                        state = dismissState,
-                        directions = setOf(DismissDirection.EndToStart),
-                        background = {},
-                        dismissContent = {
-                            ExpenseRow(
-                                expense = expense,
-                                categoryName = categoryName,
-                                paymentMethodName = paymentMethodName,
-                                onEdit = {
-                                    expenseToEdit = expense
-                                    showEditDialog = true
-                                },
-                                onDelete = {
-                                    expenseToDelete = expense
-                                    showConfirmDialog = true
-                                },
-                                onCategoryClick = {
-                                    if (onNavigateToCategory != null && expense.categoryId.isNotBlank()) {
-                                        onNavigateToCategory(expense.categoryId, categoryName)
-                                    }
-                                }
+                            Text(
+                                text = "No expenses found matching your search criteria.",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = getTextColor(),
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center
                             )
                         }
-                    )
+                    }
+                } else {
+                    items(filteredExpenses, key = { it.id }) { expense ->
+                        val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
+                        val categoryName = categoryMap[expense.categoryId] ?: "Unknown"
+                        val paymentMethodName = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
+
+                        LaunchedEffect(dismissState.currentValue) {
+                            if (
+                                dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                dismissState.isDismissed(DismissDirection.StartToEnd)
+                            ) {
+                                expenseToDelete = expense
+                                showConfirmDialog = true
+                            }
+                        }
+
+                        SwipeToDismiss(
+                            state = dismissState,
+                            directions = setOf(DismissDirection.EndToStart),
+                            background = {},
+                            dismissContent = {
+                                ExpenseRow(
+                                    expense = expense,
+                                    categoryName = categoryName,
+                                    paymentMethodName = paymentMethodName,
+                                    onEdit = {
+                                        expenseToEdit = expense
+                                        showEditDialog = true
+                                    },
+                                    onDelete = {
+                                        expenseToDelete = expense
+                                        showConfirmDialog = true
+                                    },
+                                    onCategoryClick = {
+                                        if (onNavigateToCategory != null && expense.categoryId.isNotBlank()) {
+                                            onNavigateToCategory(expense.categoryId, categoryName)
+                                        }
+                                    },
+                                    onPaymentMethodClick = {
+                                        if (onNavigateToFilteredExpenses != null && expense.paymentMethodId != null) {
+                                            onNavigateToFilteredExpenses(expense.paymentMethodId, paymentMethodName)
+                                        }
+                                    }
+                                )
+                            }
+                        )
+                    }
                 }
             }
         }

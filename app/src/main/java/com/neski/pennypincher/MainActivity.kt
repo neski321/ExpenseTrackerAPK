@@ -13,6 +13,8 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.neski.pennypincher.data.repository.SessionManager
 import com.neski.pennypincher.ui.auth.LoginScreen
 import com.neski.pennypincher.ui.auth.SignupScreen
 import com.neski.pennypincher.ui.dashboard.DashboardScreen
@@ -20,18 +22,20 @@ import com.neski.pennypincher.ui.expenses.ExpensesScreen
 import com.neski.pennypincher.ui.navigation.AppSidebar
 import com.neski.pennypincher.ui.theme.PennyPincherTheme
 import com.neski.pennypincher.ui.welcome.WelcomeScreen
-import com.neski.pennypincher.data.repository.AuthRepository
-import com.neski.pennypincher.data.repository.SessionManager
 import com.neski.pennypincher.ui.categories.CategoriesScreen
 import com.neski.pennypincher.ui.expenses.SearchExpensesScreen
 import com.neski.pennypincher.ui.income.IncomeScreen
 import com.neski.pennypincher.ui.payment.PaymentMethodsScreen
 import com.neski.pennypincher.ui.settings.SettingsScreen
-import kotlinx.coroutines.launch
 import com.neski.pennypincher.ui.expenses.FilteredExpensesScreen
 import com.neski.pennypincher.ui.income.IncomeSourcesScreen
 import com.neski.pennypincher.ui.income.FilteredIncomeScreen
 import com.neski.pennypincher.ui.components.SplashScreen
+import com.neski.pennypincher.ui.navigation.Screen
+import com.neski.pennypincher.ui.navigation.NavigationEvent
+import com.neski.pennypincher.ui.state.AppEvent
+import com.neski.pennypincher.ui.state.AppStateManager
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -43,77 +47,66 @@ class MainActivity : ComponentActivity() {
         SessionManager.initialize(this)
 
         setContent {
-            var selectedRoute by remember { mutableStateOf("loading") } // Start with loading
+            val appStateManager: AppStateManager = viewModel()
+            val appState by appStateManager.appState.collectAsState()
+            
             val drawerState = rememberDrawerState(DrawerValue.Closed)
             val scope = rememberCoroutineScope()
 
-            // Observe authentication state
-            val isLoggedIn by SessionManager.isLoggedIn.collectAsState()
-            val currentUser by SessionManager.currentUser.collectAsState()
-            
-            // Observe theme state from SessionManager
-            val isDarkTheme by SessionManager.isDarkTheme.collectAsState()
-
-            // Firebase user ID
-            val userId = currentUser?.uid ?: ""
-
-            // --- Category navigation stack for breadcrumbs ---
-            val categoryStack = remember { mutableStateListOf<Pair<String, String>>() }
-            var categoryOriginRoute by remember { mutableStateOf<String?>(null) }
-            
-            // --- Income source navigation origin tracking ---
-            var incomeSourceOriginRoute by remember { mutableStateOf<String?>(null) }
-            
-            // --- Payment method navigation origin tracking ---
-            var paymentMethodOriginRoute by remember { mutableStateOf<String?>(null) }
-
-            // Check authentication state and set initial route
-            LaunchedEffect(isLoggedIn) {
-                selectedRoute = when {
-                    isLoggedIn -> "dashboard"
-                    else -> "welcome"
-                }
-            }
-
-            PennyPincherTheme(useDarkTheme = isDarkTheme) {
-                when (selectedRoute) {
-                    "loading" -> {
-                        // Show loading screen while checking authentication
+            PennyPincherTheme(useDarkTheme = appState.isDarkTheme) {
+                when {
+                    appState.isLoading -> {
                         SplashScreen()
                     }
                     
-                    "welcome" -> WelcomeScreen(
-                        onGetStarted = { selectedRoute = "login" }
-                    )
-
-                    "login" -> LoginScreen(
-                        onLoginSuccess = { selectedRoute = "dashboard" },
-                        onNavigateToSignup = { selectedRoute = "signup" }
-                    )
-
-                    "signup" -> SignupScreen(
-                        onSignupSuccess = { selectedRoute = "dashboard" },
-                        onNavigateToLogin = { selectedRoute = "login" }
-                    )
-
+                    !appState.isLoggedIn -> {
+                        when (appState.navigationState.currentRoute) {
+                            "welcome" -> WelcomeScreen(
+                                onGetStarted = { 
+                                    appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute("login")))
+                                }
+                            )
+                            "login" -> LoginScreen(
+                                onLoginSuccess = { 
+                                    appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute("dashboard")))
+                                },
+                                onNavigateToSignup = { 
+                                    appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute("signup")))
+                                }
+                            )
+                            "signup" -> SignupScreen(
+                                onSignupSuccess = { 
+                                    appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute("dashboard")))
+                                },
+                                onNavigateToLogin = { 
+                                    appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute("login")))
+                                }
+                            )
+                            else -> WelcomeScreen(
+                                onGetStarted = { 
+                                    appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute("login")))
+                                }
+                            )
+                        }
+                    }
+                    
                     else -> {
                         ModalNavigationDrawer(
                             drawerState = drawerState,
                             drawerContent = {
                                 AppSidebar(
-                                    selectedRoute = selectedRoute,
-                                    onItemSelected = {
-                                        selectedRoute = it
+                                    selectedRoute = appState.navigationState.currentRoute,
+                                    onItemSelected = { route ->
+                                        appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute(route)))
                                         scope.launch { drawerState.close() }
                                     },
                                     onToggleTheme = {
-                                        SessionManager.toggleTheme()
+                                        appStateManager.handleEvent(AppEvent.ToggleTheme)
                                     },
                                     onLogout = {
-                                        AuthRepository.signOut()
-                                        selectedRoute = "welcome"
+                                        appStateManager.handleEvent(AppEvent.Logout)
                                     },
-                                    isDarkTheme = isDarkTheme
+                                    isDarkTheme = appState.isDarkTheme
                                 )
                             }
                         ) {
@@ -124,7 +117,8 @@ class MainActivity : ComponentActivity() {
                                             Text("PennyPincher",
                                                 color = MaterialTheme.colorScheme.primary,
                                                 fontSize = 25.sp
-                                                ) },
+                                            )
+                                        },
                                         navigationIcon = {
                                             IconButton(onClick = {
                                                 scope.launch { drawerState.open() }
@@ -136,199 +130,205 @@ class MainActivity : ComponentActivity() {
                                 }
                             ) { innerPadding ->
                                 Box(modifier = Modifier.padding(innerPadding)) {
-                                    when {
-                                        selectedRoute == "dashboard" -> DashboardScreen(
-                                            userId = userId,
-                                            onNavigate = { selectedRoute = it },
-                                            onNavigateToExpensesByMonth = { month ->
-                                                selectedRoute = "expensesByMonth:$month"
+                                    val screen = Screen.fromRoute(appState.navigationState.currentRoute)
+                                    
+                                    when (screen) {
+                                        is Screen.Dashboard -> DashboardScreen(
+                                            userId = appState.currentUser,
+                                            onNavigate = { route ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute(route)))
                                             },
-                                            categoryStack = categoryStack,
-                                            setCategoryOriginRoute = { categoryOriginRoute = it }
+                                            onNavigateToExpensesByMonth = { month ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToMonth(month)))
+                                            },
+                                            categoryStack = appState.navigationState.categoryStack,
+                                            setCategoryOriginRoute = { /* Handled by navigation manager */ }
                                         )
-                                        selectedRoute == "expenses" -> ExpensesScreen(
-                                            userId = userId,
+                                        
+                                        is Screen.Expenses -> ExpensesScreen(
+                                            userId = appState.currentUser,
                                             onNavigateToCategory = { categoryId, categoryName ->
-                                                categoryStack.clear()
-                                                categoryStack.add(categoryId to categoryName)
-                                                categoryOriginRoute = "expenses"
-                                                selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
                                             },
                                             onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
-                                                paymentMethodOriginRoute = "expenses"
-                                                selectedRoute = "expensesByPaymentMethod:$paymentMethodId:$paymentMethodName"
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
                                             }
                                         )
-                                        selectedRoute.startsWith("expensesByMonth:") -> {
-                                            val month = selectedRoute.removePrefix("expensesByMonth:")
-                                            FilteredExpensesScreen(
-                                                userId = userId,
-                                                month = month,
-                                                onBack = { selectedRoute = "dashboard" },
-                                                onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
-                                                    paymentMethodOriginRoute = selectedRoute
-                                                    selectedRoute = "expensesByMonthAndPaymentMethod:$month:$paymentMethodId:$paymentMethodName"
-                                                }
-                                            )
-                                        }
-                                        selectedRoute == "income" -> IncomeScreen(
-                                            userId = userId,
-                                            onNavigateToFilteredIncome = { incomeSourceId, incomeSourceName ->
-                                                incomeSourceOriginRoute = "income"
-                                                selectedRoute = "incomeBySource:$incomeSourceId:$incomeSourceName"
-                                            }
-                                        )
-                                        selectedRoute == "categories" -> CategoriesScreen(
-                                            userId = userId,
-                                            onCategoryClick = { categoryId, categoryName ->
-                                                categoryStack.clear()
-                                                categoryStack.add(categoryId to categoryName)
-                                                categoryOriginRoute = "categories"
-                                                selectedRoute = "expensesByCategory:$categoryId:$categoryName"
-                                            }
-                                        )
-                                        selectedRoute == "paymentMethods" -> PaymentMethodsScreen(
-                                            userId = userId,
-                                            onPaymentMethodClick = { paymentMethodId, paymentMethodName ->
-                                                paymentMethodOriginRoute = "paymentMethods"
-                                                selectedRoute = "expensesByPaymentMethod:$paymentMethodId:$paymentMethodName"
-                                            }
-                                        )
-                                        selectedRoute == "search" -> SearchExpensesScreen(
-                                            userId = userId,
+                                        
+                                        is Screen.ExpensesByMonth -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            month = screen.month,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
                                             onNavigateToCategory = { categoryId, categoryName ->
-                                                categoryStack.clear()
-                                                categoryStack.add(categoryId to categoryName)
-                                                categoryOriginRoute = "search"
-                                                selectedRoute = "expensesByCategory:$categoryId:$categoryName"
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
                                             }
                                         )
-                                        selectedRoute == "settings" -> SettingsScreen(userId = userId)
-                                        selectedRoute.startsWith("expensesByCategory:") -> {
-                                            val parts = selectedRoute.removePrefix("expensesByCategory:").split(":")
-                                            val categoryId = parts.getOrNull(0) ?: ""
-                                            val categoryName = parts.drop(1).joinToString(":")
-                                            FilteredExpensesScreen(
-                                                userId = userId,
-                                                categoryId = categoryId,
-                                                categoryName = categoryName,
-                                                onBack = {
-                                                    if (categoryStack.size > 1) {
-                                                        // Pop current, go to previous
-                                                        categoryStack.removeAt(categoryStack.lastIndex)
-                                                        val (prevId, prevName) = categoryStack.last()
-                                                        selectedRoute = "expensesByCategory:$prevId:$prevName"
-                                                    } else {
-                                                        // Back to origin (expenses or categories)
-                                                        categoryStack.clear()
-                                                        selectedRoute = categoryOriginRoute ?: "categories"
-                                                        categoryOriginRoute = null
-                                                    }
-                                                },
-                                                onNavigateToCategory = { newCategoryId, newCategoryName ->
-                                                    categoryStack.add(newCategoryId to newCategoryName)
-                                                    selectedRoute = "expensesByCategory:$newCategoryId:$newCategoryName"
-                                                },
-                                                onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
-                                                    paymentMethodOriginRoute = selectedRoute
-                                                    selectedRoute = "expensesByCategoryAndPaymentMethod:$categoryId:$categoryName:$paymentMethodId:$paymentMethodName"
-                                                }
-                                            )
-                                        }
-                                        selectedRoute.startsWith("expensesByPaymentMethod:") -> {
-                                            val parts = selectedRoute.removePrefix("expensesByPaymentMethod:").split(":")
-                                            val paymentMethodId = parts.getOrNull(0) ?: ""
-                                            val paymentMethodName = parts.drop(1).joinToString(":")
-                                            FilteredExpensesScreen(
-                                                userId = userId,
-                                                paymentMethodId = paymentMethodId,
-                                                paymentMethodName = paymentMethodName,
-                                                onBack = { 
-                                                    selectedRoute = paymentMethodOriginRoute ?: "expenses"
-                                                    paymentMethodOriginRoute = null
-                                                },
-                                                onNavigateToCategory = { categoryId, categoryName ->
-                                                    categoryStack.clear()
-                                                    categoryStack.add(categoryId to categoryName)
-                                                    categoryOriginRoute = "expensesByPaymentMethod"
-                                                    selectedRoute = "expensesByCategory:$categoryId:$categoryName"
-                                                },
-                                                onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
-                                                    paymentMethodOriginRoute = selectedRoute
-                                                    selectedRoute = "expensesByPaymentMethod:$newPaymentMethodId:$newPaymentMethodName"
-                                                }
-                                            )
-                                        }
-                                        selectedRoute.startsWith("expensesByCategoryAndPaymentMethod:") -> {
-                                            val parts = selectedRoute.removePrefix("expensesByCategoryAndPaymentMethod:").split(":")
-                                            val categoryId = parts.getOrNull(0) ?: ""
-                                            val categoryName = parts.getOrNull(1) ?: ""
-                                            val paymentMethodId = parts.getOrNull(2) ?: ""
-                                            val paymentMethodName = parts.drop(3).joinToString(":")
-                                            FilteredExpensesScreen(
-                                                userId = userId,
-                                                categoryId = categoryId,
-                                                categoryName = categoryName,
-                                                paymentMethodId = paymentMethodId,
-                                                paymentMethodName = paymentMethodName,
-                                                onBack = {
-                                                    selectedRoute = paymentMethodOriginRoute ?: "expensesByCategory:$categoryId:$categoryName"
-                                                    paymentMethodOriginRoute = null
-                                                },
-                                                onNavigateToCategory = { newCategoryId, newCategoryName ->
-                                                    categoryStack.add(newCategoryId to newCategoryName)
-                                                    selectedRoute = "expensesByCategoryAndPaymentMethod:$newCategoryId:$newCategoryName:$paymentMethodId:$paymentMethodName"
-                                                },
-                                                onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
-                                                    paymentMethodOriginRoute = selectedRoute
-                                                    selectedRoute = "expensesByCategoryAndPaymentMethod:$categoryId:$categoryName:$newPaymentMethodId:$newPaymentMethodName"
-                                                }
-                                            )
-                                        }
-                                        selectedRoute.startsWith("expensesByMonthAndPaymentMethod:") -> {
-                                            val parts = selectedRoute.removePrefix("expensesByMonthAndPaymentMethod:").split(":")
-                                            val month = parts.getOrNull(0) ?: ""
-                                            val paymentMethodId = parts.getOrNull(1) ?: ""
-                                            val paymentMethodName = parts.drop(2).joinToString(":")
-                                            FilteredExpensesScreen(
-                                                userId = userId,
-                                                month = month,
-                                                paymentMethodId = paymentMethodId,
-                                                paymentMethodName = paymentMethodName,
-                                                onBack = {
-                                                    selectedRoute = paymentMethodOriginRoute ?: "expensesByMonth:$month"
-                                                    paymentMethodOriginRoute = null
-                                                },
-                                                onNavigateToFilteredExpenses = { newPaymentMethodId, newPaymentMethodName ->
-                                                    paymentMethodOriginRoute = selectedRoute
-                                                    selectedRoute = "expensesByMonthAndPaymentMethod:$month:$newPaymentMethodId:$newPaymentMethodName"
-                                                }
-                                            )
-                                        }
-                                        selectedRoute == "incomeSources" -> IncomeSourcesScreen(
-                                            userId = userId,
+                                        
+                                        is Screen.ExpensesByCategory -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            categoryId = screen.categoryId,
+                                            categoryName = screen.categoryName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.ExpensesByPaymentMethod -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            paymentMethodId = screen.paymentMethodId,
+                                            paymentMethodName = screen.paymentMethodName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.ExpensesByMonthAndCategory -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            month = screen.month,
+                                            categoryId = screen.categoryId,
+                                            categoryName = screen.categoryName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.ExpensesByMonthAndPaymentMethod -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            month = screen.month,
+                                            paymentMethodId = screen.paymentMethodId,
+                                            paymentMethodName = screen.paymentMethodName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.ExpensesByCategoryAndPaymentMethod -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            categoryId = screen.categoryId,
+                                            categoryName = screen.categoryName,
+                                            paymentMethodId = screen.paymentMethodId,
+                                            paymentMethodName = screen.paymentMethodName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.ExpensesByMonthAndCategoryAndPaymentMethod -> FilteredExpensesScreen(
+                                            userId = appState.currentUser,
+                                            month = screen.month,
+                                            categoryId = screen.categoryId,
+                                            categoryName = screen.categoryName,
+                                            paymentMethodId = screen.paymentMethodId,
+                                            paymentMethodName = screen.paymentMethodName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.Income -> IncomeScreen(
+                                            userId = appState.currentUser,
+                                            onNavigateToFilteredIncome = { incomeSourceId, incomeSourceName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToIncomeSource(incomeSourceId, incomeSourceName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.Categories -> CategoriesScreen(
+                                            userId = appState.currentUser,
+                                            onCategoryClick = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.PaymentMethods -> PaymentMethodsScreen(
+                                            userId = appState.currentUser,
+                                            onPaymentMethodClick = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.Search -> SearchExpensesScreen(
+                                            userId = appState.currentUser,
+                                            onNavigateToCategory = { categoryId, categoryName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToCategory(categoryId, categoryName)))
+                                            },
+                                            onNavigateToFilteredExpenses = { paymentMethodId, paymentMethodName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToPaymentMethod(paymentMethodId, paymentMethodName)))
+                                            }
+                                        )
+                                        
+                                        is Screen.Settings -> SettingsScreen(userId = appState.currentUser)
+                                        
+                                        is Screen.IncomeSources -> IncomeSourcesScreen(
+                                            userId = appState.currentUser,
                                             onIncomeSourceClick = { incomeSourceId, incomeSourceName ->
-                                                incomeSourceOriginRoute = "incomeSources"
-                                                selectedRoute = "incomeBySource:$incomeSourceId:$incomeSourceName"
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToIncomeSource(incomeSourceId, incomeSourceName)))
                                             }
                                         )
-                                        selectedRoute.startsWith("incomeBySource:") -> {
-                                            val parts = selectedRoute.removePrefix("incomeBySource:").split(":")
-                                            val incomeSourceId = parts.getOrNull(0) ?: ""
-                                            val incomeSourceName = parts.drop(1).joinToString(":")
-                                            FilteredIncomeScreen(
-                                                userId = userId,
-                                                incomeSourceId = incomeSourceId,
-                                                incomeSourceName = incomeSourceName,
-                                                onBack = { 
-                                                    selectedRoute = incomeSourceOriginRoute ?: "income"
-                                                    incomeSourceOriginRoute = null
-                                                },
-                                                onNavigateToFilteredIncome = { newIncomeSourceId, newIncomeSourceName ->
-                                                    selectedRoute = "incomeBySource:$newIncomeSourceId:$newIncomeSourceName"
-                                                }
-                                            )
-                                        }
+                                        
+                                        is Screen.IncomeBySource -> FilteredIncomeScreen(
+                                            userId = appState.currentUser,
+                                            incomeSourceId = screen.incomeSourceId,
+                                            incomeSourceName = screen.incomeSourceName,
+                                            onBack = {
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateBack))
+                                            },
+                                            onNavigateToFilteredIncome = { incomeSourceId, incomeSourceName ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToIncomeSource(incomeSourceId, incomeSourceName)))
+                                            }
+                                        )
+                                        
+                                        else -> DashboardScreen(
+                                            userId = appState.currentUser,
+                                            onNavigate = { route ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToRoute(route)))
+                                            },
+                                            onNavigateToExpensesByMonth = { month ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToMonth(month)))
+                                            },
+                                            categoryStack = appState.navigationState.categoryStack,
+                                            setCategoryOriginRoute = { /* Handled by navigation manager */ }
+                                        )
                                     }
                                 }
                             }
