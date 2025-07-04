@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.neski.pennypincher"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.neski.pennypincher"
@@ -72,4 +72,6 @@ dependencies {
     implementation(libs.androidx.material)
 
     implementation(libs.accompanist.swiperefresh)
+
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 }
