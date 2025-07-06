@@ -144,6 +144,9 @@ fun SignupScreen(onSignupSuccess: () -> Unit, onNavigateToLogin: () -> Unit) {
                                 val result = AuthRepository.signUp(email, password)
                                 result
                                     .onSuccess { user ->
+                                        // Explicitly refresh the session after successful signup
+                                        AuthRepository.refreshSessionAfterAuth()
+                                        
                                         // Seed default data for the new user
                                         val seedResult = UserServiceRepository.seedDefaultUserData(user.uid)
                                         seedResult.onSuccess {

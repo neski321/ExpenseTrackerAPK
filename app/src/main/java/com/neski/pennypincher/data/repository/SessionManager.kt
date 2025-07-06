@@ -2,6 +2,7 @@ package com.neski.pennypincher.data.repository
 
 import android.content.Context
 import android.content.SharedPreferences
+import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -62,15 +63,18 @@ object SessionManager {
         // Set up Firebase Auth state listener
         auth.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
+            Log.d("SessionManager", "Firebase Auth state changed: user=${user?.uid}")
             _currentUser.value = user
-            _isLoggedIn.value = user != null
             
             if (user != null) {
                 // User is signed in, save session
                 saveSession(user)
+                _isLoggedIn.value = true
+                Log.d("SessionManager", "User signed in: ${user.uid}")
             } else {
                 // User is signed out, clear session
                 clearSession()
+                Log.d("SessionManager", "User signed out, session cleared")
             }
         }
         
@@ -133,28 +137,46 @@ object SessionManager {
         val userId = prefs.getString(KEY_USER_ID, null)
         val sessionTimestamp = prefs.getLong(KEY_SESSION_TIMESTAMP, 0L)
         
+        Log.d("SessionManager", "Checking cached session: isLoggedInCached=$isLoggedInCached, userId=$userId")
+        
         if (isLoggedInCached && userId != null) {
             // Check if session is not too old (30 days)
             val currentTime = System.currentTimeMillis()
             val sessionAge = currentTime - sessionTimestamp
             val maxSessionAge = 30L * 24L * 60L * 60L * 1000L // 30 days in milliseconds
             
+            Log.d("SessionManager", "Session age: ${sessionAge}ms, max age: ${maxSessionAge}ms")
+            
             if (sessionAge > maxSessionAge) {
                 // Session is too old, clear it
+                Log.d("SessionManager", "Session expired, clearing")
                 clearSession()
                 return
             }
             
-            // There's a cached session, but we need to verify with Firebase
+            // There's a cached session, check with Firebase
             val currentFirebaseUser = auth.currentUser
+            Log.d("SessionManager", "Firebase current user: ${currentFirebaseUser?.uid}")
+            
             if (currentFirebaseUser != null && currentFirebaseUser.uid == userId) {
                 // Firebase session is still valid
                 _isLoggedIn.value = true
                 _currentUser.value = currentFirebaseUser
+                Log.d("SessionManager", "Firebase session valid, user logged in")
+            } else if (currentFirebaseUser == null) {
+                // Firebase doesn't have a current user, but we have a valid cached session
+                // This can happen when the app is restarted. We'll trust the cached session
+                // and let the Firebase Auth state listener handle the validation
+                _isLoggedIn.value = true
+                Log.d("SessionManager", "No Firebase user but valid cached session, trusting cache")
+                // Note: _currentUser will be set by the Firebase Auth state listener when it fires
             } else {
-                // Cached session is invalid, clear it
+                // Firebase has a different user, clear the cached session
+                Log.d("SessionManager", "Firebase user mismatch, clearing session")
                 clearSession()
             }
+        } else {
+            Log.d("SessionManager", "No cached session found")
         }
     }
     
@@ -246,6 +268,98 @@ object SessionManager {
     }
     
     /**
+     * Force refresh the Firebase Auth state.
+     * This can be called when we have a cached session but Firebase doesn't have a current user.
+     */
+    suspend fun forceRefreshAuthState() {
+        try {
+            Log.d("SessionManager", "Force refreshing auth state")
+            
+            // Try to get the current user from Firebase
+            val currentUser = auth.currentUser
+            Log.d("SessionManager", "Force refresh - Firebase current user: ${currentUser?.uid}")
+            
+            if (currentUser != null) {
+                // Firebase has a current user, update our state
+                _currentUser.value = currentUser
+                _isLoggedIn.value = true
+                saveSession(currentUser)
+                Log.d("SessionManager", "Force refresh - User found and session saved")
+            } else {
+                // Firebase doesn't have a current user, check if we have a valid cached session
+                val cachedUserId = getCachedUserId()
+                val isLoggedInCached = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+                
+                Log.d("SessionManager", "Force refresh - No Firebase user, cached: $isLoggedInCached, cachedUserId: $cachedUserId")
+                
+                if (isLoggedInCached && cachedUserId != null) {
+                    // We have a valid cached session, but Firebase doesn't have a current user
+                    // This might be a temporary state. Let's try to refresh the Firebase Auth
+                    // by calling a method that forces Firebase to check its state
+                    auth.currentUser?.let { user ->
+                        if (user.uid == cachedUserId) {
+                            _currentUser.value = user
+                            _isLoggedIn.value = true
+                            saveSession(user)
+                            Log.d("SessionManager", "Force refresh - User restored from cache")
+                        } else {
+                            clearSession()
+                            Log.d("SessionManager", "Force refresh - User mismatch, session cleared")
+                        }
+                    } ?: run {
+                        Log.d("SessionManager", "Force refresh - No Firebase user after check, keeping cached session")
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            // If there's an error refreshing, clear the session to be safe
+            Log.e("SessionManager", "Force refresh error", e)
+            clearSession()
+        }
+    }
+    
+    /**
+     * Wait for Firebase Auth to initialize and restore the user session.
+     * This is useful when the app starts and Firebase Auth might take time to restore the session.
+     */
+    suspend fun waitForAuthInitialization() {
+        try {
+            Log.d("SessionManager", "Waiting for Firebase Auth initialization")
+            
+            // Check if we have a valid cached session first
+            val cachedUserId = getCachedUserId()
+            val isLoggedInCached = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+            
+            if (isLoggedInCached && cachedUserId != null) {
+                // We have a valid cached session, trust it immediately
+                _isLoggedIn.value = true
+                Log.d("SessionManager", "Trusting cached session immediately: $cachedUserId")
+            }
+            
+            // Wait a bit for Firebase Auth to initialize
+            kotlinx.coroutines.delay(1000)
+            
+            // Check if Firebase has a current user now
+            val currentUser = auth.currentUser
+            Log.d("SessionManager", "After wait - Firebase current user: ${currentUser?.uid}")
+            
+            if (currentUser != null) {
+                // Firebase has restored the user session
+                _currentUser.value = currentUser
+                _isLoggedIn.value = true
+                saveSession(currentUser)
+                Log.d("SessionManager", "Firebase Auth initialized with user: ${currentUser.uid}")
+            } else if (isLoggedInCached && cachedUserId != null) {
+                // Still no Firebase user, but we have a valid cached session
+                // Keep the cached session and wait for Firebase to catch up
+                Log.d("SessionManager", "Keeping cached session while Firebase initializes")
+            }
+        } catch (e: Exception) {
+            Log.e("SessionManager", "Error waiting for auth initialization", e)
+        }
+    }
+    
+    /**
      * Clear all session data and cached information.
      * This can be used for a complete logout or data reset.
      */
@@ -265,5 +379,56 @@ object SessionManager {
             remove(KEY_IS_DARK_THEME)
         }.apply()
         _isDarkTheme.value = false
+    }
+    
+    /**
+     * Debug method to log the current session status.
+     * This can be used to troubleshoot session issues.
+     */
+    fun logSessionStatus() {
+        val isLoggedInCached = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+        val userId = prefs.getString(KEY_USER_ID, null)
+        val sessionTimestamp = prefs.getLong(KEY_SESSION_TIMESTAMP, 0L)
+        val currentFirebaseUser = auth.currentUser
+        
+        Log.d("SessionManager", "=== Session Status ===")
+        Log.d("SessionManager", "Cached login state: $isLoggedInCached")
+        Log.d("SessionManager", "Cached user ID: $userId")
+        Log.d("SessionManager", "Session timestamp: $sessionTimestamp")
+        Log.d("SessionManager", "Firebase current user: ${currentFirebaseUser?.uid}")
+        Log.d("SessionManager", "Current login state: ${_isLoggedIn.value}")
+        Log.d("SessionManager", "Current user state: ${_currentUser.value?.uid}")
+        Log.d("SessionManager", "=====================")
+    }
+    
+    /**
+     * Test method to verify session persistence.
+     * This can be called to test if the session is working correctly.
+     */
+    fun testSessionPersistence(): Boolean {
+        val isLoggedInCached = prefs.getBoolean(KEY_IS_LOGGED_IN, false)
+        val userId = prefs.getString(KEY_USER_ID, null)
+        val currentFirebaseUser = auth.currentUser
+        
+        val hasValidCache = isLoggedInCached && userId != null
+        val hasFirebaseUser = currentFirebaseUser != null
+        val cacheMatchesFirebase = hasFirebaseUser && hasValidCache && currentFirebaseUser.uid == userId
+        
+        Log.d("SessionManager", "=== Session Test ===")
+        Log.d("SessionManager", "Has valid cache: $hasValidCache")
+        Log.d("SessionManager", "Has Firebase user: $hasFirebaseUser")
+        Log.d("SessionManager", "Cache matches Firebase: $cacheMatchesFirebase")
+        Log.d("SessionManager", "===================")
+        
+        return hasValidCache || hasFirebaseUser
+    }
+    
+    /**
+     * Manually clear the session for testing purposes.
+     * This can be used to test the login flow.
+     */
+    fun clearSessionForTesting() {
+        Log.d("SessionManager", "Manually clearing session for testing")
+        clearSession()
     }
 } 
