@@ -26,10 +26,12 @@ import com.neski.pennypincher.ui.components.IncomeRow
 import kotlinx.coroutines.launch
 
 // Material 2 for swipe to dismiss only
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.SwipeToDismiss
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.DismissDirection
-import androidx.compose.material.DismissValue
 import androidx.compose.material.ExperimentalMaterialApi
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.rememberDismissState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.graphics.Color
@@ -60,6 +62,7 @@ fun IncomeScreen(
 
     var incomeToDelete by remember { mutableStateOf<Income?>(null) }
     var showConfirmDialog by remember { mutableStateOf(false) }
+    val dismissStates = remember { mutableStateMapOf<String, androidx.compose.material.DismissState>() }
 
     var currencyMap by remember { mutableStateOf<Map<String, Currency>>(emptyMap()) }
     var incomeSources by remember { mutableStateOf<List<IncomeSource>>(emptyList()) }
@@ -218,19 +221,21 @@ fun IncomeScreen(
                     }
                     Spacer(Modifier.height(8.dp))
 
-                    LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    LazyColumn(
+                        modifier = Modifier.padding(bottom = 80.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         items(filteredIncomes, key = { it.id }) { income ->
-                            val dismissState = rememberDismissState(
-                                confirmStateChange = {
-                                    if (it == DismissValue.DismissedToStart) {
-                                        incomeToDelete = income
-                                        showConfirmDialog = true
-                                        false // Don't auto-dismiss
-                                    } else {
-                                        false
-                                    }
+                            val dismissState = dismissStates.getOrPut(income.id) { rememberDismissState() }
+
+                            LaunchedEffect(dismissState.currentValue) {
+                                if (
+                                    dismissState.isDismissed(DismissDirection.EndToStart) ||
+                                    dismissState.isDismissed(DismissDirection.StartToEnd)
+                                ) {
+                                    incomeToDelete = income
+                                    showConfirmDialog = true
                                 }
-                            )
+                            }
 
                             SwipeToDismiss(
                                 state = dismissState,
@@ -289,9 +294,9 @@ fun IncomeScreen(
                 onDismiss = { showAddDialog = false },
                 onAdd = {
                     scope.launch {
-                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
-                        showAddDialog = false
+                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
                     }
+                    showAddDialog = false
                 }
             )
         }
@@ -300,21 +305,17 @@ fun IncomeScreen(
             EditIncomeDialog(
                 userId = userId,
                 income = income,
-                onDismiss = { editingIncome = null },
+                onDismiss = {
+                    editingIncome = null
+                    showAddDialog = false
+                },
                 onUpdate = { updatedIncome ->
                     scope.launch {
-                        try {
-                            IncomeRepository.updateIncome(userId, updatedIncome)
-                            // Force refresh all data to ensure consistency
-                            incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
-                            currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
-                            incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
-                            editingIncome = null
-                            snackbarHostState.showSnackbar("Income updated successfully")
-                        } catch (e: Exception) {
-                            snackbarHostState.showSnackbar("Failed to update income")
-                        }
+                        IncomeRepository.updateIncome(userId, updatedIncome)
+                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
                     }
+                    editingIncome = null
+                    showAddDialog = false
                 }
             )
         }
@@ -322,7 +323,13 @@ fun IncomeScreen(
 
     if (showConfirmDialog && incomeToDelete != null) {
         AlertDialog(
-            onDismissRequest = { showConfirmDialog = false },
+            onDismissRequest = {
+                incomeToDelete?.let { income ->
+                    scope.launch { dismissStates[income.id]?.reset() }
+                }
+                showConfirmDialog = false
+                incomeToDelete = null
+                               },
             title = { Text("Delete Income?", color = getTextColor()) },
             text = { Text("Are you sure you want to delete this income record? This action cannot be undone.", color = getTextColor()) },
             confirmButton = {
@@ -340,8 +347,11 @@ fun IncomeScreen(
             },
             dismissButton = {
                 TextButton(onClick = {
-                    showConfirmDialog = false
-                    incomeToDelete = null
+                    scope.launch {
+                        dismissStates[incomeToDelete?.id]?.reset()
+                        showConfirmDialog = false
+                        incomeToDelete = null
+                    }
                 }) {
                     Text("Cancel", color = getTextColor())
                 }

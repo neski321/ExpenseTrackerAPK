@@ -79,7 +79,6 @@ fun ExpensesScreen(
     var expenseBeingEdited by remember { mutableStateOf<Expense?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var isLoadingMore by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
     
     // Filter state variables
@@ -419,7 +418,39 @@ fun ExpensesScreen(
                     )
                     ExpenseRepository.addExpense(userId, newExpense)
                     expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
+                    // Rebuild availableYears and availableMonths from new expenses
+                    availableYears = expenses.map {
+                        val cal = Calendar.getInstance()
+                        cal.time = it.date
+                        cal.get(Calendar.YEAR)
+                    }.distinct().sortedDescending()
+                    selectedYear?.let { year ->
+                        availableMonths = expenses.filter {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.date
+                            cal.get(Calendar.YEAR) == year
+                        }.map {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.date
+                            cal.get(Calendar.MONTH)
+                        }.distinct().sorted()
+                    } ?: run {
+                        availableMonths = emptyList()
+                    }
+                    // Reset filter if selected year/month are no longer available
+                    if (selectedYear != null && selectedYear !in availableYears) {
+                        selectedYear = null
+                        selectedMonth = null
+                    }
+                    if (selectedMonth != null && selectedMonth !in availableMonths) {
+                        selectedMonth = null
+                    }
                     snackbarHostState.showSnackbar("Expense added successfully")
+                    Log.d("ExpensesDebug", "After add: years=" + expenses.map {
+                        val cal = Calendar.getInstance()
+                        cal.time = it.date
+                        cal.get(Calendar.YEAR)
+                    } + " selectedYear=$selectedYear selectedMonth=$selectedMonth")
                     showDialog = false
                 }
             }
@@ -453,7 +484,45 @@ fun ExpensesScreen(
             onUpdate = { updatedExpense ->
                 scope.launch {
                     ExpenseRepository.addExpense(userId, updatedExpense)
-                    expenses = ExpenseRepository.getExpensesByPage(userId, 20, 0)
+                    expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
+                    // Rebuild availableYears and availableMonths from new expenses
+                    availableYears = expenses.map {
+                        val cal = Calendar.getInstance()
+                        cal.time = it.date
+                        cal.get(Calendar.YEAR)
+                    }.distinct().sortedDescending()
+                    selectedYear?.let { year ->
+                        availableMonths = expenses.filter {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.date
+                            cal.get(Calendar.YEAR) == year
+                        }.map {
+                            val cal = Calendar.getInstance()
+                            cal.time = it.date
+                            cal.get(Calendar.MONTH)
+                        }.distinct().sorted()
+                    } ?: run {
+                        availableMonths = emptyList()
+                    }
+                    // Reset filter if selected year/month are no longer available
+                    if (selectedYear != null && selectedYear !in availableYears) {
+                        selectedYear = null
+                        selectedMonth = null
+                    }
+                    if (selectedMonth != null && selectedMonth !in availableMonths) {
+                        selectedMonth = null
+                    }
+                    // Debug logging
+                    Log.d("ExpensesDebug", "After update: years=" + expenses.map {
+                        val cal = Calendar.getInstance()
+                        cal.time = it.date
+                        cal.get(Calendar.YEAR)
+                    } + " availableYears=$availableYears selectedYear=$selectedYear selectedMonth=$selectedMonth")
+                    Log.d("ExpensesDebug", "Expense details: " + expenses.joinToString { e ->
+                        val cal = Calendar.getInstance()
+                        cal.time = e.date
+                        "date=" + cal.get(Calendar.YEAR).toString() + "-" + (cal.get(Calendar.MONTH)+1).toString() + " paymentMethod=" + (e.paymentMethodId ?: "null")
+                    })
                     showEditDialog = false
                     expenseToEdit = null
                     snackbarHostState.showSnackbar("Expense updated successfully")

@@ -2,9 +2,11 @@ package com.neski.pennypincher.ui.income
 
 import android.os.Build
 import androidx.annotation.RequiresApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -19,12 +21,20 @@ import com.neski.pennypincher.ui.components.IncomeRow
 import kotlinx.coroutines.launch
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+
+
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.SwipeToDismiss
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
+import androidx.compose.material.icons.filled.Delete
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditIncomeDialog
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
@@ -246,8 +256,23 @@ fun FilteredIncomeScreen(
 
                             SwipeToDismiss(
                                 state = dismissState,
-                                directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-                                background = {},
+                                directions = setOf(DismissDirection.EndToStart),
+                                background = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.Red.copy(alpha = 0.2f))
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
                                 dismissContent = {
                                     IncomeRow(
                                         income = income,
@@ -270,6 +295,9 @@ fun FilteredIncomeScreen(
             if (showConfirmDialog && incomeToDelete != null) {
                 AlertDialog(
                     onDismissRequest = {
+                        incomeToDelete?.let { income ->
+                            scope.launch { dismissStates[income.id]?.reset() }
+                        }
                         showConfirmDialog = false
                         incomeToDelete = null
                     },
@@ -292,7 +320,7 @@ fun FilteredIncomeScreen(
                                 incomeToDelete = null
                             }
                         }) {
-                            Text("Cancel", color = getTextColor())
+                            Text("Cancel")
                         }
                     }
                 )
@@ -309,10 +337,36 @@ fun FilteredIncomeScreen(
                         scope.launch {
                             try {
                                 IncomeRepository.updateIncome(userId, updatedIncome)
-                                // Force refresh all data to ensure consistency
                                 incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
                                 incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
                                 currencies = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true)
+                                // Rebuild availableYears and availableMonths from new incomes
+                                availableYears = incomes.map {
+                                    val cal = java.util.Calendar.getInstance()
+                                    cal.time = it.date
+                                    cal.get(java.util.Calendar.YEAR)
+                                }.distinct().sortedDescending()
+                                selectedYear?.let { year ->
+                                    availableMonths = incomes.filter {
+                                        val cal = java.util.Calendar.getInstance()
+                                        cal.time = it.date
+                                        cal.get(java.util.Calendar.YEAR) == year
+                                    }.map {
+                                        val cal = java.util.Calendar.getInstance()
+                                        cal.time = it.date
+                                        cal.get(java.util.Calendar.MONTH)
+                                    }.distinct().sorted()
+                                } ?: run {
+                                    availableMonths = emptyList()
+                                }
+                                // Reset filter if selected year/month are no longer available
+                                if (selectedYear != null && selectedYear !in availableYears) {
+                                    selectedYear = null
+                                    selectedMonth = null
+                                }
+                                if (selectedMonth != null && selectedMonth !in availableMonths) {
+                                    selectedMonth = null
+                                }
                                 showEditDialog = false
                                 incomeToEdit = null
                                 snackbarHostState.showSnackbar("Income updated successfully")
