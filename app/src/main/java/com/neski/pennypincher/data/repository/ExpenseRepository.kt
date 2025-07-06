@@ -154,4 +154,37 @@ object ExpenseRepository {
         val all = getAllExpenses(userId, forceRefresh)
         return all.filter { it.categoryId == categoryId }
     }
+
+    suspend fun getAvailableYears(userId: String, forceRefresh: Boolean = false): List<Int> {
+        val all = getAllExpenses(userId, forceRefresh)
+        val calendar = Calendar.getInstance()
+        
+        return all.map { expense ->
+            calendar.time = expense.date
+            calendar.get(Calendar.YEAR)
+        }.distinct().sortedDescending()
+    }
+
+    suspend fun getAvailableMonthsForYear(userId: String, year: Int, forceRefresh: Boolean = false): List<Int> {
+        val all = getAllExpenses(userId, forceRefresh)
+        val calendar = Calendar.getInstance()
+        
+        return all.filter { expense ->
+            calendar.time = expense.date
+            calendar.get(Calendar.YEAR) == year
+        }.map { expense ->
+            calendar.time = expense.date
+            calendar.get(Calendar.MONTH)
+        }.distinct().sorted()
+    }
+
+    suspend fun getExpensesByYearAndMonth(userId: String, year: Int, month: Int, forceRefresh: Boolean = false): List<Expense> {
+        val all = getAllExpenses(userId, forceRefresh)
+        val calendar = Calendar.getInstance()
+        
+        return all.filter { expense ->
+            calendar.time = expense.date
+            calendar.get(Calendar.YEAR) == year && calendar.get(Calendar.MONTH) == month
+        }
+    }
 }

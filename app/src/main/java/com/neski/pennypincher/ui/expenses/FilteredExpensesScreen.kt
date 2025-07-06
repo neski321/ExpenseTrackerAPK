@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
+import com.neski.pennypincher.ui.components.DateFilters
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -67,6 +68,12 @@ fun FilteredExpensesScreen(
     var showEditDialog by remember { mutableStateOf(false) }
     var expenseToEdit by remember { mutableStateOf<Expense?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
+
+    // Date filter state
+    var selectedYear by remember { mutableStateOf<Int?>(null) }
+    var selectedMonth by remember { mutableStateOf<Int?>(null) }
+    var availableYears by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var availableMonths by remember { mutableStateOf<List<Int>>(emptyList()) }
 
     fun filterExpenses(
         allExpenses: List<Expense>,
@@ -110,7 +117,44 @@ fun FilteredExpensesScreen(
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
             expenses = filterExpenses(allExpenses, categories, month, categoryId, paymentMethodId)
             isLoading = false
+
+            // Build available years from loaded/filtered expenses
+            availableYears = expenses.map {
+                val cal = java.util.Calendar.getInstance()
+                cal.time = it.date
+                cal.get(java.util.Calendar.YEAR)
+            }.distinct().sortedDescending()
         }
+    }
+
+    // Update available months when selected year or expenses change
+    LaunchedEffect(selectedYear, expenses) {
+        scope.launch {
+            selectedYear?.let { year ->
+                availableMonths = expenses.filter {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(java.util.Calendar.YEAR) == year
+                }.map {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(java.util.Calendar.MONTH)
+                }.distinct().sorted()
+            } ?: run {
+                availableMonths = emptyList()
+            }
+        }
+    }
+
+    // Filter expenses by selected year/month
+    val filteredExpenses = expenses.filter { expense ->
+        val calendar = java.util.Calendar.getInstance()
+        calendar.time = expense.date
+        val expenseYear = calendar.get(java.util.Calendar.YEAR)
+        val expenseMonth = calendar.get(java.util.Calendar.MONTH)
+        val yearMatches = selectedYear == null || expenseYear == selectedYear
+        val monthMatches = selectedMonth == null || expenseMonth == selectedMonth
+        yearMatches && monthMatches
     }
 
     fun deleteExpense(expense: Expense) {
@@ -213,9 +257,24 @@ fun FilteredExpensesScreen(
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingSpinner(size = 80, showText = true, loadingText = "Loading filtered expenses...")
                     }
-                } else if (expenses.isEmpty()) {
-                    Text("No expenses found for the selected filter.", color = getTextColor())
+                } else if (filteredExpenses.isEmpty()) {
+                    Text("No expenses found.", color = getTextColor())
                 } else {
+                    // Date filter UI
+                    DateFilters(
+                        availableYears = availableYears,
+                        availableMonths = availableMonths,
+                        selectedYear = selectedYear,
+                        selectedMonth = selectedMonth,
+                        onYearSelected = { year ->
+                            selectedYear = year
+                            selectedMonth = null // Reset month when year changes
+                        },
+                        onMonthSelected = { month ->
+                            selectedMonth = month
+                        },
+                        label = "Filter Expenses"
+                    )
                     // Table header row
                     Surface(
                         modifier = Modifier
@@ -244,7 +303,7 @@ fun FilteredExpensesScreen(
                             .padding(bottom = 50.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        items(expenses, key = { it.id }) { expense ->
+                        items(filteredExpenses, key = { it.id }) { expense ->
                             val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
                             val categoryNameResolved = categoryMap[expense.categoryId] ?: "Unknown"
                             val paymentMethodNameResolved = paymentMethodMap[expense.paymentMethodId] ?: "N/A"
