@@ -15,43 +15,48 @@ import com.neski.pennypincher.ui.theme.getTextColor
 
 @Composable
 fun WelcomeScreen(onGetStarted: () -> Unit) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(24.dp),
-        verticalArrangement = Arrangement.Center,
-        horizontalAlignment = Alignment.CenterHorizontally
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MaterialTheme.colorScheme.background
     ) {
-        Icon(
-            imageVector = Icons.Default.AttachMoney,
-            contentDescription = "Coins Icon",
-            modifier = Modifier.size(72.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp),
+            verticalArrangement = Arrangement.Center,
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            Icon(
+                imageVector = Icons.Default.AttachMoney,
+                contentDescription = "Coins Icon",
+                modifier = Modifier.size(72.dp),
+                tint = MaterialTheme.colorScheme.primary
+            )
 
-        Spacer(modifier = Modifier.height(24.dp))
+            Spacer(modifier = Modifier.height(24.dp))
 
-        Text(
-            text = "PennyPincher by neski",
-            fontSize = 28.sp,
-            fontWeight = FontWeight.Bold,
-            color = getTextColor()
-        )
+            Text(
+                text = "PennyPincher by neski",
+                fontSize = 28.sp,
+                fontWeight = FontWeight.Bold,
+                color = getTextColor()
+            )
 
-        Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(12.dp))
 
-        Text(
-            text = "Take control of your finances with ease.\nTrack spending, set budgets, and achieve your financial goals.",
-            textAlign = TextAlign.Center,
-            fontSize = 16.sp,
-            color = getTextColor(),
-            fontWeight = FontWeight.Medium
-        )
+            Text(
+                text = "Take control of your finances with ease.\nTrack spending, set budgets, and achieve your financial goals.",
+                textAlign = TextAlign.Center,
+                fontSize = 16.sp,
+                color = getTextColor(),
+                fontWeight = FontWeight.Medium
+            )
 
-        Spacer(modifier = Modifier.height(32.dp))
+            Spacer(modifier = Modifier.height(32.dp))
 
-        Button(onClick = onGetStarted) {
-            Text("Get Started", color = getTextColor())
+            Button(onClick = onGetStarted) {
+                Text("Get Started", color = MaterialTheme.colorScheme.onPrimary)
+            }
         }
     }
 }
