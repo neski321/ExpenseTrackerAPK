@@ -19,10 +19,14 @@ import com.neski.pennypincher.data.models.PaymentMethod
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
 import androidx.compose.material.icons.Icons
 
+
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.SwipeToDismiss
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
 import androidx.compose.foundation.clickable
@@ -31,6 +35,12 @@ import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
 import com.neski.pennypincher.ui.components.DateFilters
+import android.util.Log
+import androidx.compose.foundation.background
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
 @RequiresApi(Build.VERSION_CODES.O)
@@ -320,8 +330,23 @@ fun FilteredExpensesScreen(
 
                             SwipeToDismiss(
                                 state = dismissState,
-                                directions = setOf(DismissDirection.StartToEnd, DismissDirection.EndToStart),
-                                background = {},
+                                directions = setOf(DismissDirection.EndToStart),
+                                background = {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxSize()
+                                            .clip(RoundedCornerShape(12.dp))
+                                            .background(Color.Red.copy(alpha = 0.2f))
+                                            .padding(horizontal = 20.dp),
+                                        contentAlignment = Alignment.CenterEnd
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Delete,
+                                            contentDescription = "Delete",
+                                            tint = MaterialTheme.colorScheme.error
+                                        )
+                                    }
+                                },
                                 dismissContent = {
                                     ExpenseRow(
                                         expense = expense,
@@ -348,6 +373,9 @@ fun FilteredExpensesScreen(
             if (showConfirmDialog && expenseToDelete != null) {
                 AlertDialog(
                     onDismissRequest = {
+                        expenseToDelete?.let { expense ->
+                            scope.launch { dismissStates[expense.id]?.reset() }
+                        }
                         showConfirmDialog = false
                         expenseToDelete = null
                     },
@@ -390,6 +418,36 @@ fun FilteredExpensesScreen(
                             categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
                             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId, forceRefresh = true)
                             expenses = filterExpenses(allExpenses, categories, month, categoryId, paymentMethodId)
+                            // Rebuild availableYears and availableMonths from new expenses
+                            availableYears = expenses.map {
+                                val cal = java.util.Calendar.getInstance()
+                                cal.time = it.date
+                                cal.get(java.util.Calendar.YEAR)
+                            }.distinct().sortedDescending()
+                            selectedYear?.let { year ->
+                                availableMonths = expenses.filter {
+                                    val cal = java.util.Calendar.getInstance()
+                                    cal.time = it.date
+                                    cal.get(java.util.Calendar.YEAR) == year
+                                }.map {
+                                    val cal = java.util.Calendar.getInstance()
+                                    cal.time = it.date
+                                    cal.get(java.util.Calendar.MONTH)
+                                }.distinct().sorted()
+                            } ?: run {
+                                availableMonths = emptyList()
+                            }
+                            // Debug logging
+                            Log.d("ExpensesDebug", "After update: years=" + expenses.map {
+                                val cal = java.util.Calendar.getInstance()
+                                cal.time = it.date
+                                cal.get(java.util.Calendar.YEAR)
+                            } + " availableYears=$availableYears selectedYear=$selectedYear selectedMonth=$selectedMonth")
+                            Log.d("ExpensesDebug", "Expense details: " + expenses.joinToString { e ->
+                                val cal = java.util.Calendar.getInstance()
+                                cal.time = e.date
+                                "date=" + cal.get(java.util.Calendar.YEAR).toString() + "-" + (cal.get(java.util.Calendar.MONTH)+1).toString() + " paymentMethod=" + (e.paymentMethodId ?: "null")
+                            })
                             showEditDialog = false
                             expenseToEdit = null
                             snackbarHostState.showSnackbar("Expense updated successfully")
