@@ -64,7 +64,7 @@ fun SpendingBarChartSection(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 180.dp, max = 320.dp)
+                    .heightIn(min = 180.dp, max = 280.dp)
             ) {
                 // Draw bars manually for click support
                 LazyRow(

@@ -99,6 +99,7 @@ fun AddCategoryDialog(
                             text = { Text("None (Top-level category)") },
                             onClick = {
                                 selectedParentId = ""
+                                parentId = null
                                 expanded = false
                             }
                         )
@@ -120,14 +121,15 @@ fun AddCategoryDialog(
                                             contentDescription = if (expandedParents[parent.id] ?: true) "Collapse" else "Expand"
                                         )
                                     }
-                                    DropdownMenuItem(
-                                        text = { Text(parent.name) },
-                                        onClick = {
-                                            selectedParentId = parent.id
-                                            expanded = false
-                                        },
-                                        modifier = Modifier.weight(1f)
-                                    )
+                                                                            DropdownMenuItem(
+                                            text = { Text(parent.name) },
+                                            onClick = {
+                                                selectedParentId = parent.id
+                                                parentId = parent.id
+                                                expanded = false
+                                            },
+                                            modifier = Modifier.weight(1f)
+                                        )
                                 }
                                 if (expandedParents[parent.id] ?: true) {
                                     children.sortedBy { it.name }.forEach { child ->
@@ -135,6 +137,7 @@ fun AddCategoryDialog(
                                             text = { Row { Spacer(Modifier.width(48.dp)); Text(child.name) } },
                                             onClick = {
                                                 selectedParentId = child.id
+                                                parentId = child.id
                                                 expanded = false
                                             }
                                         )
@@ -145,6 +148,7 @@ fun AddCategoryDialog(
                                     text = { Text(parent.name) },
                                     onClick = {
                                         selectedParentId = parent.id
+                                        parentId = parent.id
                                         expanded = false
                                     }
                                 )

@@ -19,6 +19,7 @@ sealed class NavigationEvent {
     data class NavigateToPaymentMethod(val paymentMethodId: String, val paymentMethodName: String) : NavigationEvent()
     data class NavigateToMonth(val month: String) : NavigationEvent()
     data class NavigateToIncomeSource(val incomeSourceId: String, val incomeSourceName: String) : NavigationEvent()
+    data class SetCategoryOriginRoute(val route: String) : NavigationEvent()
     object NavigateBack : NavigationEvent()
     object ClearNavigationStack : NavigationEvent()
 }
@@ -33,7 +34,15 @@ class ExpenseNavigationManager {
                 val isRoot = isRootScreen(event.route)
                 if (isRoot) {
                     // Clear stack and all origins when entering a root page
-                    _navigationState.value = NavigationState(event.route)
+                    _navigationState.value = NavigationState(
+                        currentRoute = event.route,
+                        categoryStack = emptyList(),
+                        navigationStack = emptyList(),
+                        categoryOriginRoute = null,
+                        paymentMethodOriginRoute = null,
+                        nestedOriginRoute = null,
+                        incomeSourceOriginRoute = null
+                    )
                 } else {
                     val currentState = _navigationState.value
                     val newNavigationStack = currentState.navigationStack.toMutableList()
@@ -85,9 +94,15 @@ class ExpenseNavigationManager {
                     else -> currentState.currentRoute
                 }
                 
-                val newNavigationStack = if (isFromRoot) mutableListOf<String>() else currentState.navigationStack.toMutableList()
-                if (!isRootScreen(currentState.currentRoute)) {
-                    newNavigationStack.add(currentState.currentRoute)
+                val newNavigationStack = if (isFromRoot) {
+                    // When navigating from a root page, add the current route to the stack
+                    mutableListOf(currentState.currentRoute)
+                } else {
+                    currentState.navigationStack.toMutableList().apply {
+                        if (!isRootScreen(currentState.currentRoute)) {
+                            add(currentState.currentRoute)
+                        }
+                    }
                 }
                 
                 _navigationState.value = currentState.copy(
@@ -168,6 +183,13 @@ class ExpenseNavigationManager {
                     currentRoute = newRoute,
                     navigationStack = newNavigationStack.toList(),
                     incomeSourceOriginRoute = currentState.incomeSourceOriginRoute ?: currentState.currentRoute
+                )
+            }
+            
+            is NavigationEvent.SetCategoryOriginRoute -> {
+                val currentState = _navigationState.value
+                _navigationState.value = currentState.copy(
+                    categoryOriginRoute = event.route
                 )
             }
             

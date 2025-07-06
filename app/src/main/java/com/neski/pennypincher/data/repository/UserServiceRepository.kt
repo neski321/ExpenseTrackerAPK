@@ -135,16 +135,16 @@ object UserServiceRepository {
         val incomeSourcesColRef = firestore.collection("users").document(userId).collection("incomeSources")
         
         val defaultIncomeSources = listOf(
-            IncomeSource(id = "salary", name = "Salary", type = "Employment"),
-            IncomeSource(id = "freelance", name = "Freelance", type = "Self-Employment"),
-            IncomeSource(id = "business", name = "Business Income", type = "Business"),
-            IncomeSource(id = "investments", name = "Investment Returns", type = "Investment"),
-            IncomeSource(id = "rental", name = "Rental Income", type = "Property"),
-            IncomeSource(id = "gifts", name = "Gifts", type = "Other"),
-            IncomeSource(id = "refunds", name = "Refunds & Rebates", type = "Other"),
-            IncomeSource(id = "side_hustle", name = "Side Hustle", type = "Self-Employment"),
-            IncomeSource(id = "bonus", name = "Bonus", type = "Employment"),
-            IncomeSource(id = "commission", name = "Commission", type = "Employment")
+            IncomeSource(id = "salary", name = "Salary"),
+            IncomeSource(id = "freelance", name = "Freelance"),
+            IncomeSource(id = "business", name = "Business Income"),
+            IncomeSource(id = "investments", name = "Investment Returns"),
+            IncomeSource(id = "rental", name = "Rental Income"),
+            IncomeSource(id = "gifts", name = "Gifts"),
+            IncomeSource(id = "refunds", name = "Refunds & Rebates"),
+            IncomeSource(id = "side_hustle", name = "Side Hustle"),
+            IncomeSource(id = "bonus", name = "Bonus"),
+            IncomeSource(id = "commission", name = "Commission")
         )
 
         defaultIncomeSources.forEach { incomeSource ->

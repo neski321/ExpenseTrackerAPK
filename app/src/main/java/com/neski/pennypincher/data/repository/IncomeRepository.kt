@@ -43,7 +43,8 @@ object IncomeRepository {
         db.collection("users")
             .document(userId)
             .collection("incomes")
-            .add(income)
+            .document(income.id)
+            .set(income)
             .await()
 
         // Clear cache

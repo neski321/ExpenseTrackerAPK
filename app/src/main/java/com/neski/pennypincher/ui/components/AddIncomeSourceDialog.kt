@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Close
 import com.neski.pennypincher.data.models.IncomeSource
 import com.neski.pennypincher.data.repository.IncomeSourceRepository
 import kotlinx.coroutines.launch
+import java.util.UUID
 
 @Composable
 fun AddIncomeSourceDialog(
@@ -53,7 +54,10 @@ fun AddIncomeSourceDialog(
                 Button(
                     onClick = {
                         scope.launch {
-                            IncomeSourceRepository.addIncomeSource(userId, IncomeSource(name = name))
+                            IncomeSourceRepository.addIncomeSource(userId, IncomeSource(
+                                id = UUID.randomUUID().toString(),
+                                name = name
+                            ))
                             onAdd()
                         }
                     },

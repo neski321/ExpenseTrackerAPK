@@ -5,9 +5,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
-import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -58,8 +56,6 @@ fun EditExpenseDialog(
     var currencyExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     var showNextDueDatePicker by remember { mutableStateOf(false) }
-
-    val expandedParents = remember { mutableStateMapOf<String, Boolean>() }
 
     val dateFormatter = remember { SimpleDateFormat("MMMM dd, yyyy", Locale.getDefault()) }
     val formattedDate = dateFormatter.format(date)
@@ -251,48 +247,21 @@ fun EditExpenseDialog(
                             expanded = categoryExpanded,
                             onDismissRequest = { categoryExpanded = false }
                         ) {
-                            val parents = categories.filter { it.parentId == null }.sortedBy { it.name }
-                            val childrenByParent = categories.filter { it.parentId != null }.groupBy { it.parentId }
-                            parents.forEach { parent ->
-                                val children = childrenByParent[parent.id] ?: emptyList()
-                                if (children.isNotEmpty()) {
-                                    Row(verticalAlignment = Alignment.CenterVertically) {
-                                        IconButton(
-                                            onClick = {
-                                                expandedParents[parent.id] = !(expandedParents[parent.id] ?: true)
-                                            },
-                                            modifier = Modifier.size(24.dp)
-                                        ) {
-                                            Icon(
-                                                imageVector = if (expandedParents[parent.id] ?: true) Icons.Default.ExpandMore else Icons.Default.ChevronRight,
-                                                contentDescription = if (expandedParents[parent.id] ?: true) "Collapse" else "Expand"
-                                            )
-                                        }
-                                        DropdownMenuItem(
-                                            text = { Text(parent.name) },
-                                            onClick = {
-                                                category = parent.id
-                                                categoryExpanded = false
-                                            },
-                                            modifier = Modifier.weight(1f)
-                                        )
-                                    }
-                                    if (expandedParents[parent.id] ?: true) {
-                                        children.sortedBy { it.name }.forEach { child ->
-                                            DropdownMenuItem(
-                                                text = { Row { Spacer(Modifier.width(48.dp)); Text(child.name) } },
-                                                onClick = {
-                                                    category = child.id
-                                                    categoryExpanded = false
-                                                }
-                                            )
-                                        }
-                                    }
-                                } else {
+                            val grouped = categories.groupBy { cat ->
+                                categories.find { it.id == cat.parentId }?.name ?: "Parent"
+                            }.toSortedMap()
+
+                            grouped.forEach { (parentName, subcats) ->
+                                DropdownMenuItem(
+                                    text = { Text(parentName.uppercase(), style = MaterialTheme.typography.labelMedium) },
+                                    onClick = {},
+                                    enabled = false
+                                )
+                                subcats.sortedBy { it.name }.forEach { cat ->
                                     DropdownMenuItem(
-                                        text = { Text(parent.name) },
+                                        text = { Text(cat.name) },
                                         onClick = {
-                                            category = parent.id
+                                            category = cat.id
                                             categoryExpanded = false
                                         }
                                     )

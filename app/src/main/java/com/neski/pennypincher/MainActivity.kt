@@ -142,7 +142,9 @@ class MainActivity : ComponentActivity() {
                                                 appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToMonth(month)))
                                             },
                                             categoryStack = appState.navigationState.categoryStack,
-                                            setCategoryOriginRoute = { /* Handled by navigation manager */ }
+                                            setCategoryOriginRoute = { route ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.SetCategoryOriginRoute(route)))
+                                            }
                                         )
                                         
                                         is Screen.Expenses -> ExpensesScreen(
@@ -327,7 +329,9 @@ class MainActivity : ComponentActivity() {
                                                 appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.NavigateToMonth(month)))
                                             },
                                             categoryStack = appState.navigationState.categoryStack,
-                                            setCategoryOriginRoute = { /* Handled by navigation manager */ }
+                                            setCategoryOriginRoute = { route ->
+                                                appStateManager.handleEvent(AppEvent.Navigate(NavigationEvent.SetCategoryOriginRoute(route)))
+                                            }
                                         )
                                     }
                                 }

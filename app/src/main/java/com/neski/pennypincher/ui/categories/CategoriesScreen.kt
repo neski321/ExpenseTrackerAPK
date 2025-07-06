@@ -54,19 +54,24 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     var categoryNameMap by remember { mutableStateOf<Map<String, String>>(emptyMap()) }
     val expandedMap = remember { mutableStateMapOf<String, Boolean>() }
 
+    // Helper function to update categories with consistent sorting
+    fun updateCategoriesWithSorting(fetched: List<Category>) {
+        categories = fetched.sortedBy { it.name }
+        groupedCategories = fetched
+            .sortedBy { it.name }
+            .groupBy { parent ->
+                fetched.find { it.id == parent.parentId }?.name ?: "Parent"
+            }
+        categoryNameMap = categories.associateBy({ it.id }, { it.name })
+    }
+
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
         onRefresh = {
             scope.launch {
                 isRefreshing = true
                 val fetched = CategoryRepository.getAllCategories(userId, forceRefresh = true)
-                categories = fetched.sortedBy { it.name }
-                groupedCategories = fetched
-                    .sortedBy { it.name }
-                    .groupBy { parent ->
-                        fetched.find { it.id == parent.parentId }?.name ?: "Parent"
-                    }
-                categoryNameMap = categories.associateBy({ it.id }, { it.name })
+                updateCategoriesWithSorting(fetched)
                 isRefreshing = false
             }
         }
@@ -75,13 +80,7 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     LaunchedEffect(userId) {
         scope.launch {
             val fetched = CategoryRepository.getAllCategories(userId)
-            categories = fetched.sortedBy { it.name }
-            groupedCategories = fetched
-                .sortedBy { it.name }
-                .groupBy { parent ->
-                    fetched.find { it.id == parent.parentId }?.name ?: "Parent"
-                }
-            categoryNameMap = categories.associateBy({ it.id }, { it.name })
+            updateCategoriesWithSorting(fetched)
             isLoading = false
         }
     }
@@ -91,12 +90,7 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
             CategoryRepository.deleteCategory(userId, category.id)
             // Force refresh from Firebase after deletion
             val fetched = CategoryRepository.getAllCategories(userId, forceRefresh = true)
-            categories = fetched.sortedBy { it.name }
-            groupedCategories = fetched
-                .sortedBy { it.name }
-                .groupBy { parent ->
-                    fetched.find { it.id == parent.parentId }?.name ?: "Parent"
-                }
+            updateCategoriesWithSorting(fetched)
         }
     }
 
@@ -272,7 +266,8 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
             onDismiss = { showDialog = false },
             onAdded = {
                 scope.launch {
-                    categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                    val fetched = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                    updateCategoriesWithSorting(fetched)
                     showDialog = false
                 }
             }
@@ -287,7 +282,8 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
             onDismiss = { showEditDialog = false },
             onUpdated = {
                 scope.launch {
-                    categories = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                    val fetched = CategoryRepository.getAllCategories(userId, forceRefresh = true)
+                    updateCategoriesWithSorting(fetched)
                     showEditDialog = false
                 }
             }
@@ -298,8 +294,11 @@ fun CategoriesScreen(userId: String, onCategoryClick: (String, String) -> Unit =
     if (showConfirmDialog && categoryToDelete != null) {
         AlertDialog(
             onDismissRequest = {
-                showConfirmDialog = false
-                categoryToDelete = null
+                scope.launch {
+                    dismissStates[categoryToDelete?.id]?.reset()
+                    showConfirmDialog = false
+                    categoryToDelete = null
+                }
             },
             title = { Text("Delete Category", color = getTextColor()) },
             text = { Text("Are you sure you want to delete this category?", color = getTextColor()) },

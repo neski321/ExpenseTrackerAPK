@@ -69,7 +69,7 @@ fun IncomeScreen(
         onRefresh = {
             scope.launch {
                 isRefreshing = true
-                incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
                 currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
                 incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
                 isRefreshing = false
@@ -80,7 +80,7 @@ fun IncomeScreen(
     fun loadData() {
         scope.launch {
             isLoading = true
-            incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+            incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
             currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
             incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
             isLoading = false
@@ -225,7 +225,7 @@ fun IncomeScreen(
                 onDismiss = { showAddDialog = false },
                 onAdd = {
                     scope.launch {
-                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                        incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
                         showAddDialog = false
                     }
                 }
@@ -242,7 +242,7 @@ fun IncomeScreen(
                         try {
                             IncomeRepository.updateIncome(userId, updatedIncome)
                             // Force refresh all data to ensure consistency
-                            incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true)
+                            incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
                             currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
                             incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
                             editingIncome = null

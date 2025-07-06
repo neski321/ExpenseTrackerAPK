@@ -21,6 +21,7 @@ import com.neski.pennypincher.data.repository.IncomeSourceRepository
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
+import java.util.UUID
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -171,6 +172,7 @@ fun AddIncomeDialog(
                 Button(
                     onClick = {
                         val income = Income(
+                            id = UUID.randomUUID().toString(),
                             amount = amount.toDoubleOrNull() ?: 0.0,
                             date = date,
                             incomeSourceId = sourceId,
