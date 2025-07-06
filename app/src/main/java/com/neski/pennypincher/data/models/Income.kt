@@ -7,6 +7,5 @@ data class Income(
     val amount: Double = 0.0,
     val date: Date = Date(),
     val incomeSourceId: String = "",
-    val currencyId: String = "",
-    val description: String = ""
+    val currencyId: String = ""
 )

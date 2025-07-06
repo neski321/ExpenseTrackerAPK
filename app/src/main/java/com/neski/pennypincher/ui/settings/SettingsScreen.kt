@@ -11,6 +11,11 @@ import com.neski.pennypincher.data.repository.ExpenseRepository
 import com.neski.pennypincher.data.repository.IncomeRepository
 import kotlinx.coroutines.launch
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Language
+import androidx.compose.ui.platform.LocalContext
+import android.content.Intent
+import android.net.Uri
 
 @Composable
 fun SettingsScreen(userId: String) {
@@ -25,8 +30,35 @@ fun SettingsScreen(userId: String) {
             currencies = CurrencyRepository.getAllCurrencies(userId, true)
             totalIncome = IncomeRepository.getTotalIncome(userId)
             totalExpenses = ExpenseRepository.getTotalExpenses(userId)
+            }
+}
+
+@Composable
+fun WebVersionSection() {
+    val context = LocalContext.current
+    
+    Card(modifier = Modifier.fillMaxWidth()) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text("Web Version", style = MaterialTheme.typography.titleMedium)
+            Text("Access PennyPincher on the web for a full desktop experience.")
+            
+            Button(
+                onClick = {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse("https://pennypincherbyneski.vercel.app/dashboard"))
+                    context.startActivity(intent)
+                },
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(Icons.Default.Language, contentDescription = "Web Version")
+                Spacer(Modifier.width(8.dp))
+                Text("Open Web Version")
+            }
         }
     }
+}
 
     val netBalance = totalIncome - totalExpenses
 
@@ -50,6 +82,9 @@ fun SettingsScreen(userId: String) {
         }
         item {
             CurrencyManagementSection(userId = userId)
+        }
+        item {
+            WebVersionSection()
         }
     }
 }

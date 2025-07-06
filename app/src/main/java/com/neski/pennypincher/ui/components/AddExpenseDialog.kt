@@ -6,12 +6,12 @@ import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CalendarToday
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ChevronRight
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.material.icons.filled.ChevronRight
-import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -25,7 +25,6 @@ import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.*
 import com.neski.pennypincher.ui.theme.getTextColor
-
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,11 +71,11 @@ fun AddExpenseDialog(
     var paymentMethods by remember { mutableStateOf<List<PaymentMethod>>(emptyList()) }
     var paymentExpanded by remember { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
+    val expandedParents = remember { mutableStateMapOf<String, Boolean>() }
 
     var currencyExpanded by remember { mutableStateOf(false) }
 
     var currencies by remember { mutableStateOf<List<Currency>>(emptyList()) }
-    val expandedParents = remember { mutableStateMapOf<String, Boolean>() }
     //val currencyMap = currencies.associateBy { it.id }
     //val selectedCurrencyLabel = currencyMap[currency]?.let { "${it.symbol} ${it.code}" } ?: "Select Currency"
 
@@ -278,6 +277,7 @@ fun AddExpenseDialog(
                             expanded = expanded,
                             onDismissRequest = { expanded = false }
                         ) {
+                            // Show nested parent/child structure
                             val parents = categories.filter { it.parentId == null }.sortedBy { it.name }
                             val childrenByParent = categories.filter { it.parentId != null }.groupBy { it.parentId }
                             parents.forEach { parent ->

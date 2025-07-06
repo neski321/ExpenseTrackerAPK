@@ -38,7 +38,6 @@ fun IncomeRow(
             ) {
                 Column {
                     Text(dateString, style = MaterialTheme.typography.bodyMedium)
-                    //Text(income.description, style = MaterialTheme.typography.bodySmall)
                 }
 
                 Spacer(modifier = Modifier.width(8.dp))

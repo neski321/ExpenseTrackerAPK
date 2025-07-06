@@ -35,7 +35,8 @@ object IncomeSourceRepository {
         firestore.collection("users")
             .document(userId)
             .collection("incomeSources")
-            .add(source)
+            .document(source.id)
+            .set(source)
             .await()
         
         // Clear cache

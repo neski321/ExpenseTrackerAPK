@@ -160,7 +160,7 @@ fun EditCategoryDialog(
                                 name = name,
                                 parentId = if (selectedParentId.isBlank()) null else selectedParentId
                             )
-                            CategoryRepository.addCategory(userId, updated)
+                            CategoryRepository.updateCategory(userId, updated)
                             isLoading = false
                             onUpdated()
                         }

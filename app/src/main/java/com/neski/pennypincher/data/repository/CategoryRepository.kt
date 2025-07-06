@@ -56,5 +56,23 @@ object CategoryRepository {
         }
     }
 
+    suspend fun updateCategory(userId: String, category: Category) {
+        val db = FirebaseFirestore.getInstance()
+        try {
+            db.collection("users")
+                .document(userId)
+                .collection("categories")
+                .document(category.id)
+                .set(category)
+                .await()
+            
+            // Clear cache
+            cachedCategories = null
+            cachedCategoriesUserId = null
+        } catch (e: Exception) {
+            throw e
+        }
+    }
+
 }
 

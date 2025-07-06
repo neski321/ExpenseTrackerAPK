@@ -1,6 +1,8 @@
 package com.neski.pennypincher.ui.navigation
 
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -41,27 +43,32 @@ fun AppSidebar(
             .fillMaxHeight()
             .width(260.dp)
     ) {
-        Column(modifier = Modifier.padding(vertical = 24.dp)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.AttachMoney,
-                    contentDescription = "App Icon",
-                    tint = colors.primary,
-                    modifier = Modifier.size(32.dp)
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = "PennyPincher",
-                    fontSize = 30.sp,
-                    color = colors.primary,
-                    style = MaterialTheme.typography.titleLarge
-                )
+        LazyColumn(
+            modifier = Modifier.padding(vertical = 24.dp),
+            contentPadding = PaddingValues(bottom = 16.dp)
+        ) {
+            item {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.padding(start = 16.dp, top = 32.dp, bottom = 24.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.AttachMoney,
+                        contentDescription = "App Icon",
+                        tint = colors.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "PennyPincher",
+                        fontSize = 30.sp,
+                        color = colors.primary,
+                        style = MaterialTheme.typography.titleLarge
+                    )
+                }
             }
 
-            items.forEach { item ->
+            items(items) { item ->
                 NavigationDrawerItem(
                     label = { Text(item.label, fontSize = 16.sp, color = colors.onSurface) },
                     selected = item.route == selectedRoute,
@@ -77,30 +84,36 @@ fun AppSidebar(
                 )
             }
 
-            Spacer(modifier = Modifier.weight(1f))
+            item {
+                Spacer(modifier = Modifier.height(16.dp))
+                HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
+                Spacer(modifier = Modifier.height(16.dp))
+            }
 
-            HorizontalDivider(thickness = 1.dp, color = colors.outlineVariant)
+            item {
+                NavigationDrawerItem(
+                    label = { Text("Toggle Theme", color = colors.onSurface) },
+                    selected = false,
+                    onClick = onToggleTheme,
+                    icon = {
+                        val themeIcon = if (isDarkTheme) Icons.Default.Brightness7 else Icons.Default.DarkMode
+                        Icon(themeIcon, contentDescription = "Toggle Theme", tint = colors.onSurface)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+            }
 
-            NavigationDrawerItem(
-                label = { Text("Toggle Theme", color = colors.onSurface) },
-                selected = false,
-                onClick = onToggleTheme,
-                icon = {
-                    val themeIcon = if (isDarkTheme) Icons.Default.Brightness7 else Icons.Default.DarkMode
-                    Icon(themeIcon, contentDescription = "Toggle Theme", tint = colors.onSurface)
-                },
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-            )
-
-            NavigationDrawerItem(
-                label = { Text("Logout", color = colors.onSurface) },
-                selected = false,
-                onClick = onLogout,
-                icon = {
-                    Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = colors.onSurface)
-                },
-                modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
-            )
+            item {
+                NavigationDrawerItem(
+                    label = { Text("Logout", color = colors.onSurface) },
+                    selected = false,
+                    onClick = onLogout,
+                    icon = {
+                        Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = "Logout", tint = colors.onSurface)
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding)
+                )
+            }
         }
     }
 }
