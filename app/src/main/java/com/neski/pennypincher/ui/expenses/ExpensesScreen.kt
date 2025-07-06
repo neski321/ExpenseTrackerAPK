@@ -26,13 +26,17 @@ import com.neski.pennypincher.data.models.PaymentMethod
 import com.neski.pennypincher.data.repository.PaymentMethodRepository
 
 import java.util.UUID
+import java.util.Calendar
 import kotlinx.coroutines.launch
 
 // Material 2 for swipe to dismiss only
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.SwipeToDismiss
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.DismissDirection
 import androidx.compose.material.ExperimentalMaterialApi
 import androidx.compose.material.icons.filled.Delete
+//noinspection UsingMaterialAndMaterial3Libraries
 import androidx.compose.material.rememberDismissState
 import com.neski.pennypincher.ui.components.EditExpenseDialog
 import java.util.Date
@@ -43,7 +47,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
+import com.neski.pennypincher.ui.components.DateFilters
 import com.neski.pennypincher.ui.theme.getTextColor
+import android.util.Log
 
 @SuppressLint("SimpleDateFormat")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class,
@@ -73,10 +79,14 @@ fun ExpensesScreen(
     var expenseBeingEdited by remember { mutableStateOf<Expense?>(null) }
     val snackbarHostState = remember { SnackbarHostState() }
 
-    var page by remember { mutableStateOf(0) }
-    val pageSize = 20
     var isLoadingMore by remember { mutableStateOf(false) }
     var isRefreshing by remember { mutableStateOf(false) }
+    
+    // Filter state variables
+    var selectedYear by remember { mutableStateOf<Int?>(null) }
+    var selectedMonth by remember { mutableStateOf<Int?>(null) }
+    var availableYears by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var availableMonths by remember { mutableStateOf<List<Int>>(emptyList()) }
 
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
@@ -86,9 +96,23 @@ fun ExpensesScreen(
                 categories = CategoryRepository.getAllCategories(userId)
                 expenses = ExpenseRepository.getAllExpenses(userId, forceRefresh = true)
                 paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
-                val pageOne = ExpenseRepository.getExpensesByPage(userId, pageSize, 0)
-                expenses = pageOne
-                page = 0
+                // Refresh available years and months
+                availableYears = expenses.map {
+                    val cal = Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(Calendar.YEAR)
+                }.distinct().sortedDescending()
+                selectedYear?.let { year ->
+                    availableMonths = expenses.filter {
+                        val cal = Calendar.getInstance()
+                        cal.time = it.date
+                        cal.get(Calendar.YEAR) == year
+                    }.map {
+                        val cal = Calendar.getInstance()
+                        cal.time = it.date
+                        cal.get(Calendar.MONTH)
+                    }.distinct().sorted()
+                }
                 isRefreshing = false
             }
         }
@@ -99,21 +123,67 @@ fun ExpensesScreen(
             categories = CategoryRepository.getAllCategories(userId)
             expenses = ExpenseRepository.getAllExpenses(userId)
             paymentMethods = PaymentMethodRepository.getAllPaymentMethods(userId)
-            val pageOne = ExpenseRepository.getExpensesByPage(userId, pageSize, 0)
-            expenses = pageOne
-            page = 0
+            // Build available years from loaded expenses
+            availableYears = expenses.map {
+                val cal = Calendar.getInstance()
+                cal.time = it.date
+                cal.get(Calendar.YEAR)
+            }.distinct().sortedDescending()
             isLoading = false
+
+            // Debug: Print all years in loaded expenses
+            val years = expenses.map {
+                val cal = Calendar.getInstance()
+                cal.time = it.date
+                cal.get(Calendar.YEAR)
+            }
+            Log.d("ExpensesDebug", "Loaded expense years: $years")
+            Log.d("ExpensesDebug", "Available years for filter: $availableYears")
+        }
+    }
+    
+    // Update available months when selected year changes
+    LaunchedEffect(selectedYear, expenses) {
+        scope.launch {
+            selectedYear?.let { year ->
+                availableMonths = expenses.filter {
+                    val cal = Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(Calendar.YEAR) == year
+                }.map {
+                    val cal = Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(Calendar.MONTH)
+                }.distinct().sorted()
+            } ?: run {
+                availableMonths = emptyList()
+            }
         }
     }
 
-    val filteredExpenses = if (filterMonth != null) {
-        expenses.filter { expense ->
-            val month = java.text.SimpleDateFormat("MMM").format(expense.date)
-            month == filterMonth
+    val year = selectedYear
+    val month = selectedMonth
+    val filteredExpenses = expenses.filter { expense ->
+        val calendar = Calendar.getInstance()
+        calendar.time = expense.date
+        val expenseYear = calendar.get(Calendar.YEAR)
+        val expenseMonth = calendar.get(Calendar.MONTH)
+        // Apply year filter
+        val yearMatches = year == null || expenseYear == year
+        // Apply month filter
+        val monthMatches = month == null || expenseMonth == month
+        // Apply legacy filterMonth filter if provided
+        val legacyMonthMatches = if (filterMonth != null) {
+            val m = java.text.SimpleDateFormat("MMM").format(expense.date)
+            m == filterMonth
+        } else {
+            true
         }
-    } else {
-        expenses
+        yearMatches && monthMatches && legacyMonthMatches
     }
+
+    // Debug: Print count of filtered expenses for selected year/month
+    Log.d("ExpensesDebug", "Filtered expenses for year=$year, month=$month: ${filteredExpenses.size}")
 
     fun deleteExpense(expense: Expense) {
         scope.launch {
@@ -159,6 +229,22 @@ fun ExpensesScreen(
                     color = getTextColor()
                 )
                 Spacer(Modifier.height(12.dp))
+                
+                // Expense Filters
+                DateFilters(
+                    availableYears = availableYears,
+                    availableMonths = availableMonths,
+                    selectedYear = selectedYear,
+                    selectedMonth = selectedMonth,
+                    onYearSelected = { year ->
+                        selectedYear = year
+                        selectedMonth = null // Reset month when year changes
+                    },
+                    onMonthSelected = { month ->
+                        selectedMonth = month
+                    },
+                    modifier = Modifier.padding(bottom = 16.dp)
+                )
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingSpinner(size = 80, showText = true, loadingText = "Loading expenses...")
@@ -199,8 +285,8 @@ fun ExpensesScreen(
                             }
                             Spacer(Modifier.height(8.dp))
                             LazyColumn(
-
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                                verticalArrangement = Arrangement.spacedBy(4.dp),
+                                contentPadding = PaddingValues(bottom = 80.dp)
                             ) {
                                 items(filteredExpenses, key = { it.id }) { expense ->
                                     val dismissState = dismissStates.getOrPut(expense.id) { rememberDismissState() }
@@ -264,29 +350,6 @@ fun ExpensesScreen(
                                     )
                                     Spacer(modifier = Modifier.height(3.dp))
                                 }
-
-                                item {
-                                    if (!isLoadingMore) {
-                                        Button(
-                                            onClick = {
-                                                scope.launch {
-                                                    isLoadingMore = true
-                                                    val nextPage = ExpenseRepository.getExpensesByPage(userId, pageSize, page + 1)
-                                                    if (nextPage.isNotEmpty()) {
-                                                        expenses = expenses + nextPage
-                                                        page += 1
-                                                    }
-                                                    isLoadingMore = false
-                                                }
-                                            },
-                                            modifier = Modifier
-                                                .fillMaxWidth()
-                                                .padding(vertical = 10.dp)
-                                        ) {
-                                            Text("Load More")
-                                        }
-                                    }
-                                }
                             }
                         }
                         PullRefreshIndicator(
@@ -305,6 +368,9 @@ fun ExpensesScreen(
     if (showConfirmDialog && expenseToDelete != null) {
         AlertDialog(
             onDismissRequest = {
+                expenseToDelete?.let { expense ->
+                    scope.launch { dismissStates[expense.id]?.reset() }
+                }
                 showConfirmDialog = false
                 expenseToDelete = null
             },

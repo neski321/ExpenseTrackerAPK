@@ -40,6 +40,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
+import com.neski.pennypincher.ui.components.DateFilters
 
 @RequiresApi(Build.VERSION_CODES.O)
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalMaterialApi::class)
@@ -64,6 +65,12 @@ fun IncomeScreen(
     var incomeSources by remember { mutableStateOf<List<IncomeSource>>(emptyList()) }
     val incomeSourceMap = incomeSources.associateBy({ it.id }, { it.name })
 
+    // Date filter state
+    var selectedYear by remember { mutableStateOf<Int?>(null) }
+    var selectedMonth by remember { mutableStateOf<Int?>(null) }
+    var availableYears by remember { mutableStateOf<List<Int>>(emptyList()) }
+    var availableMonths by remember { mutableStateOf<List<Int>>(emptyList()) }
+
     val pullRefreshState = rememberPullRefreshState(
         refreshing = isRefreshing,
         onRefresh = {
@@ -72,6 +79,12 @@ fun IncomeScreen(
                 incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
                 currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
                 incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
+                // Build available years from loaded incomes
+                availableYears = incomes.map {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(java.util.Calendar.YEAR)
+                }.distinct().sortedDescending()
                 isRefreshing = false
             }
         }
@@ -83,12 +96,48 @@ fun IncomeScreen(
             incomes = IncomeRepository.getAllIncome(userId, forceRefresh = true).sortedByDescending { it.date }
             currencyMap = CurrencyRepository.getAllCurrencies(userId, forceRefresh = true).associateBy { it.id }
             incomeSources = IncomeSourceRepository.getAllIncomeSources(userId, forceRefresh = true)
+            // Build available years from loaded incomes
+            availableYears = incomes.map {
+                val cal = java.util.Calendar.getInstance()
+                cal.time = it.date
+                cal.get(java.util.Calendar.YEAR)
+            }.distinct().sortedDescending()
             isLoading = false
         }
     }
 
     LaunchedEffect(userId) {
         loadData()
+    }
+
+    // Update available months when selected year or incomes change
+    LaunchedEffect(selectedYear, incomes) {
+        scope.launch {
+            selectedYear?.let { year ->
+                availableMonths = incomes.filter {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(java.util.Calendar.YEAR) == year
+                }.map {
+                    val cal = java.util.Calendar.getInstance()
+                    cal.time = it.date
+                    cal.get(java.util.Calendar.MONTH)
+                }.distinct().sorted()
+            } ?: run {
+                availableMonths = emptyList()
+            }
+        }
+    }
+
+    // Filter incomes by selected year/month
+    val filteredIncomes = incomes.filter { income ->
+        val calendar = java.util.Calendar.getInstance()
+        calendar.time = income.date
+        val incomeYear = calendar.get(java.util.Calendar.YEAR)
+        val incomeMonth = calendar.get(java.util.Calendar.MONTH)
+        val yearMatches = selectedYear == null || incomeYear == selectedYear
+        val monthMatches = selectedMonth == null || incomeMonth == selectedMonth
+        yearMatches && monthMatches
     }
 
     Scaffold(
@@ -122,6 +171,21 @@ fun IncomeScreen(
                     color = getTextColor()
                 )
                 Spacer(Modifier.height(12.dp))
+                // Date filter UI
+                DateFilters(
+                    availableYears = availableYears,
+                    availableMonths = availableMonths,
+                    selectedYear = selectedYear,
+                    selectedMonth = selectedMonth,
+                    onYearSelected = { year ->
+                        selectedYear = year
+                        selectedMonth = null // Reset month when year changes
+                    },
+                    onMonthSelected = { month ->
+                        selectedMonth = month
+                    },
+                    label = "Filter Income"
+                )
                 if (isLoading) {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         LoadingSpinner(size = 80, showText = true, loadingText = "Loading income...")
@@ -155,7 +219,7 @@ fun IncomeScreen(
                     Spacer(Modifier.height(8.dp))
 
                     LazyColumn(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        items(incomes, key = { it.id }) { income ->
+                        items(filteredIncomes, key = { it.id }) { income ->
                             val dismissState = rememberDismissState(
                                 confirmStateChange = {
                                     if (it == DismissValue.DismissedToStart) {
