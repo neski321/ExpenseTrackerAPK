@@ -150,7 +150,11 @@ fun LoginScreen(
                             try {
                                 val result = AuthRepository.signIn(email, password)
                                 result
-                                    .onSuccess { onLoginSuccess() }
+                                    .onSuccess { 
+                                        // Explicitly refresh the session after successful login
+                                        AuthRepository.refreshSessionAfterAuth()
+                                        onLoginSuccess() 
+                                    }
                                     .onFailure { errorMsg = it.message ?: "Login failed" }
                             } finally {
                                 isLoading = false
