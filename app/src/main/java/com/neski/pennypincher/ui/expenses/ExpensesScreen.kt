@@ -49,7 +49,6 @@ import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.components.DateFilters
 import com.neski.pennypincher.ui.theme.getTextColor
-import android.util.Log
 
 @SuppressLint("SimpleDateFormat")
 @OptIn(ExperimentalMaterialApi::class, ExperimentalMaterialApi::class,
@@ -129,15 +128,6 @@ fun ExpensesScreen(
                 cal.get(Calendar.YEAR)
             }.distinct().sortedDescending()
             isLoading = false
-
-            // Debug: Print all years in loaded expenses
-            val years = expenses.map {
-                val cal = Calendar.getInstance()
-                cal.time = it.date
-                cal.get(Calendar.YEAR)
-            }
-            Log.d("ExpensesDebug", "Loaded expense years: $years")
-            Log.d("ExpensesDebug", "Available years for filter: $availableYears")
         }
     }
     
@@ -180,9 +170,6 @@ fun ExpensesScreen(
         }
         yearMatches && monthMatches && legacyMonthMatches
     }
-
-    // Debug: Print count of filtered expenses for selected year/month
-    Log.d("ExpensesDebug", "Filtered expenses for year=$year, month=$month: ${filteredExpenses.size}")
 
     fun deleteExpense(expense: Expense) {
         scope.launch {
@@ -446,11 +433,6 @@ fun ExpensesScreen(
                         selectedMonth = null
                     }
                     snackbarHostState.showSnackbar("Expense added successfully")
-                    Log.d("ExpensesDebug", "After add: years=" + expenses.map {
-                        val cal = Calendar.getInstance()
-                        cal.time = it.date
-                        cal.get(Calendar.YEAR)
-                    } + " selectedYear=$selectedYear selectedMonth=$selectedMonth")
                     showDialog = false
                 }
             }
@@ -512,17 +494,6 @@ fun ExpensesScreen(
                     if (selectedMonth != null && selectedMonth !in availableMonths) {
                         selectedMonth = null
                     }
-                    // Debug logging
-                    Log.d("ExpensesDebug", "After update: years=" + expenses.map {
-                        val cal = Calendar.getInstance()
-                        cal.time = it.date
-                        cal.get(Calendar.YEAR)
-                    } + " availableYears=$availableYears selectedYear=$selectedYear selectedMonth=$selectedMonth")
-                    Log.d("ExpensesDebug", "Expense details: " + expenses.joinToString { e ->
-                        val cal = Calendar.getInstance()
-                        cal.time = e.date
-                        "date=" + cal.get(Calendar.YEAR).toString() + "-" + (cal.get(Calendar.MONTH)+1).toString() + " paymentMethod=" + (e.paymentMethodId ?: "null")
-                    })
                     showEditDialog = false
                     expenseToEdit = null
                     snackbarHostState.showSnackbar("Expense updated successfully")

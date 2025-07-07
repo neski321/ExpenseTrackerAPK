@@ -36,6 +36,7 @@ import com.neski.pennypincher.ui.navigation.NavigationEvent
 import com.neski.pennypincher.ui.state.AppEvent
 import com.neski.pennypincher.ui.state.AppStateManager
 import kotlinx.coroutines.launch
+import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -341,5 +342,16 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Removed SessionManager.refreshSession()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        // Force sign out on app close
+        FirebaseAuth.getInstance().signOut()
     }
 }
