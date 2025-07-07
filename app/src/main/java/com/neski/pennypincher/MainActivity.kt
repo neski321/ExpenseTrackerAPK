@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import androidx.lifecycle.viewmodel.initializer
+import androidx.lifecycle.viewmodel.viewModelFactory
 import com.neski.pennypincher.data.repository.SessionManager
 import com.neski.pennypincher.ui.auth.LoginScreen
 import com.neski.pennypincher.ui.auth.SignupScreen
@@ -36,7 +38,6 @@ import com.neski.pennypincher.ui.navigation.NavigationEvent
 import com.neski.pennypincher.ui.state.AppEvent
 import com.neski.pennypincher.ui.state.AppStateManager
 import kotlinx.coroutines.launch
-import com.google.firebase.auth.FirebaseAuth
 
 class MainActivity : ComponentActivity() {
     @RequiresApi(Build.VERSION_CODES.O)
@@ -48,7 +49,11 @@ class MainActivity : ComponentActivity() {
         SessionManager.initialize(this)
 
         setContent {
-            val appStateManager: AppStateManager = viewModel()
+            val appStateManager: AppStateManager = viewModel(
+                factory = viewModelFactory {
+                    initializer { AppStateManager(application) }
+                }
+            )
             val appState by appStateManager.appState.collectAsState()
             
             val drawerState = rememberDrawerState(DrawerValue.Closed)
@@ -351,7 +356,6 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        // Force sign out on app close
-        FirebaseAuth.getInstance().signOut()
+        // Removed forced sign out on app close to allow session persistence
     }
 }

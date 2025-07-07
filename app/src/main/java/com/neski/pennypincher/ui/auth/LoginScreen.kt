@@ -9,7 +9,6 @@ import androidx.compose.material.icons.automirrored.filled.Login
 import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material.icons.filled.Login
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +24,9 @@ import com.neski.pennypincher.data.repository.AuthRepository
 import kotlinx.coroutines.launch
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
+import android.content.Context
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 
 @Composable
 fun LoginScreen(
@@ -39,6 +41,39 @@ fun LoginScreen(
     var errorMsg by remember { mutableStateOf<String?>(null) }
     var isLoading by remember { mutableStateOf(false) }
     var isResetting by remember { mutableStateOf(false) }
+    var rememberMe by remember { mutableStateOf(false) }
+
+    // Secure SharedPreferences setup
+    val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+    val sharedPrefs = remember {
+        EncryptedSharedPreferences.create(
+            "pennypincher_prefs",
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+    }
+
+    // On first composition, check for stored credentials
+    LaunchedEffect(Unit) {
+        val savedEmail = sharedPrefs.getString("email", null)
+        val savedPassword = sharedPrefs.getString("password", null)
+        if (!savedEmail.isNullOrBlank() && !savedPassword.isNullOrBlank()) {
+            email = savedEmail
+            password = savedPassword
+            rememberMe = true
+            isLoading = true
+            val result = AuthRepository.signIn(savedEmail, savedPassword)
+            isLoading = false
+            result.onSuccess {
+                onLoginSuccess()
+            }.onFailure {
+                // Clear invalid credentials
+                sharedPrefs.edit().clear().apply()
+            }
+        }
+    }
 
     val colorScheme = MaterialTheme.colorScheme
     val isLight = MaterialTheme.colorScheme.background.luminance() > 0.5f
@@ -143,6 +178,14 @@ fun LoginScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = rememberMe,
+                        onCheckedChange = { rememberMe = it }
+                    )
+                    Text("Remember Me")
+                }
+
                 Button(
                     onClick = {
                         scope.launch {
@@ -150,10 +193,17 @@ fun LoginScreen(
                             try {
                                 val result = AuthRepository.signIn(email, password)
                                 result
-                                    .onSuccess { 
-                                        // Explicitly refresh the session after successful login
+                                    .onSuccess {
+                                        if (rememberMe) {
+                                            sharedPrefs.edit()
+                                                .putString("email", email)
+                                                .putString("password", password)
+                                                .apply()
+                                        } else {
+                                            sharedPrefs.edit().clear().apply()
+                                        }
                                         AuthRepository.refreshSessionAfterAuth()
-                                        onLoginSuccess() 
+                                        onLoginSuccess()
                                     }
                                     .onFailure { errorMsg = it.message ?: "Login failed" }
                             } finally {

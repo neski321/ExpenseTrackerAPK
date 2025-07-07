@@ -1,6 +1,7 @@
 package com.neski.pennypincher.ui.state
 
-import androidx.lifecycle.ViewModel
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.neski.pennypincher.data.repository.AuthRepository
 import com.neski.pennypincher.data.repository.SessionManager
@@ -27,7 +28,7 @@ sealed class AppEvent {
     data class Navigate(val event: NavigationEvent) : AppEvent()
 }
 
-class AppStateManager : ViewModel() {
+class AppStateManager(application: Application) : AndroidViewModel(application) {
     private val _appState = MutableStateFlow(AppState())
     val appState: StateFlow<AppState> = _appState.asStateFlow()
     
@@ -85,6 +86,7 @@ class AppStateManager : ViewModel() {
             
             is AppEvent.Logout -> {
                 viewModelScope.launch {
+                    SessionManager.signOut(getApplication())
                     AuthRepository.signOut()
                     handleNavigationEvent(NavigationEvent.ClearNavigationStack)
                 }

@@ -7,6 +7,8 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import android.content.res.Configuration
+import androidx.security.crypto.EncryptedSharedPreferences
+import androidx.security.crypto.MasterKeys
 
 /**
  * SessionManager handles authentication and theme state for the current app session only.
@@ -49,8 +51,6 @@ object SessionManager {
         val uiMode = context.resources.configuration.uiMode
         val isSystemDark = (uiMode and Configuration.UI_MODE_NIGHT_MASK) == Configuration.UI_MODE_NIGHT_YES
         _isDarkTheme.value = isSystemDark
-        // Always sign out on app launch to prevent session restoration
-        auth.signOut()
         // Set up Firebase Auth state listener
         auth.addAuthStateListener { firebaseAuth ->
             val user = firebaseAuth.currentUser
@@ -86,8 +86,18 @@ object SessionManager {
     /**
      * Sign out the current user and clear the session.
      */
-    fun signOut() {
+    fun signOut(context: Context) {
         auth.signOut()
+        // Clear stored credentials
+        val masterKeyAlias = MasterKeys.getOrCreate(MasterKeys.AES256_GCM_SPEC)
+        val sharedPrefs = EncryptedSharedPreferences.create(
+            "pennypincher_prefs",
+            masterKeyAlias,
+            context,
+            EncryptedSharedPreferences.PrefKeyEncryptionScheme.AES256_SIV,
+            EncryptedSharedPreferences.PrefValueEncryptionScheme.AES256_GCM
+        )
+        sharedPrefs.edit().clear().apply()
     }
     
     /**
