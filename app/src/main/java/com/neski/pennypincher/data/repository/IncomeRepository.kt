@@ -1,10 +1,12 @@
 package com.neski.pennypincher.data.repository
 
+import android.annotation.SuppressLint
 import com.google.firebase.firestore.FirebaseFirestore
 import com.neski.pennypincher.data.models.Income
 import kotlinx.coroutines.tasks.await
 
 object IncomeRepository {
+    @SuppressLint("StaticFieldLeak")
     private val db = FirebaseFirestore.getInstance()
     private var cachedIncome: List<Income>? = null
     private var cachedIncomeUserId: String? = null
@@ -27,7 +29,6 @@ object IncomeRepository {
 
             cachedIncome = list
             cachedIncomeUserId = userId
-            println("Found ${snapshot.documents.size} income docs")
             list
         } catch (e: Exception) {
             emptyList()

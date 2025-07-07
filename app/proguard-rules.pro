@@ -19,3 +19,22 @@
 # If you keep the line number information, uncomment this to
 # hide the original source file name.
 #-renamesourcefileattribute SourceFile
+
+# --- Added for Firebase Auth and session persistence issues ---
+# Keep all Firebase classes
+-keep class com.google.firebase.** { *; }
+-dontwarn com.google.firebase.**
+
+# Keep all model classes (if you use reflection or Gson)
+-keepclassmembers class com.neski.pennypincher.data.models.** { *; }
+
+# Keep Kotlin coroutines and flows
+-keep class kotlinx.coroutines.** { *; }
+-dontwarn kotlinx.coroutines.**
+
+# Keep all classes with @Keep annotation
+-keep @androidx.annotation.Keep class * { *; }
+
+# Keep all public methods in SessionManager
+-keep class com.neski.pennypincher.data.repository.SessionManager { *; }
+# --- End custom rules ---

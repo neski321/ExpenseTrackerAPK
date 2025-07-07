@@ -35,7 +35,6 @@ import androidx.compose.ui.text.font.FontWeight
 import com.neski.pennypincher.ui.components.LoadingSpinner
 import com.neski.pennypincher.ui.theme.getTextColor
 import com.neski.pennypincher.ui.components.DateFilters
-import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.Delete
@@ -437,17 +436,6 @@ fun FilteredExpensesScreen(
                             } ?: run {
                                 availableMonths = emptyList()
                             }
-                            // Debug logging
-                            Log.d("ExpensesDebug", "After update: years=" + expenses.map {
-                                val cal = java.util.Calendar.getInstance()
-                                cal.time = it.date
-                                cal.get(java.util.Calendar.YEAR)
-                            } + " availableYears=$availableYears selectedYear=$selectedYear selectedMonth=$selectedMonth")
-                            Log.d("ExpensesDebug", "Expense details: " + expenses.joinToString { e ->
-                                val cal = java.util.Calendar.getInstance()
-                                cal.time = e.date
-                                "date=" + cal.get(java.util.Calendar.YEAR).toString() + "-" + (cal.get(java.util.Calendar.MONTH)+1).toString() + " paymentMethod=" + (e.paymentMethodId ?: "null")
-                            })
                             showEditDialog = false
                             expenseToEdit = null
                             snackbarHostState.showSnackbar("Expense updated successfully")

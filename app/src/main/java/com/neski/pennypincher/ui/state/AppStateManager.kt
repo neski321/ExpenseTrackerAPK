@@ -11,8 +11,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.delay
-import android.util.Log
 
 data class AppState(
     val isLoggedIn: Boolean = false,
@@ -48,9 +46,8 @@ class AppStateManager : ViewModel() {
             SessionManager.isLoggedIn.collect { isLoggedIn ->
                 _appState.value = _appState.value.copy(
                     isLoggedIn = isLoggedIn,
-                    isLoading = false
+                    isLoading = false // Set loading false after first auth state
                 )
-                
                 if (!isLoggedIn) {
                     handleNavigationEvent(NavigationEvent.NavigateToRoute("welcome"))
                 } else {
@@ -73,19 +70,6 @@ class AppStateManager : ViewModel() {
             SessionManager.isDarkTheme.collect { isDarkTheme ->
                 _appState.value = _appState.value.copy(isDarkTheme = isDarkTheme)
             }
-        }
-        
-        // Force refresh auth state on app start to handle cached sessions
-        viewModelScope.launch {
-            SessionManager.logSessionStatus()
-            // Wait for Firebase Auth to initialize properly
-            SessionManager.waitForAuthInitialization()
-            SessionManager.forceRefreshAuthState()
-            SessionManager.logSessionStatus()
-            
-            // Test session persistence
-            val sessionWorking = SessionManager.testSessionPersistence()
-            Log.d("AppStateManager", "Session persistence test result: $sessionWorking")
         }
     }
     

@@ -1,5 +1,6 @@
 package com.neski.pennypincher.data.repository
 
+import android.annotation.SuppressLint
 import com.google.firebase.firestore.FirebaseFirestore
 import com.neski.pennypincher.data.models.Category
 import com.neski.pennypincher.data.models.PaymentMethod
@@ -8,6 +9,7 @@ import com.neski.pennypincher.data.models.Currency
 import kotlinx.coroutines.tasks.await
 
 object UserServiceRepository {
+    @SuppressLint("StaticFieldLeak")
     private val firestore = FirebaseFirestore.getInstance()
 
     /**
@@ -33,10 +35,8 @@ object UserServiceRepository {
             // Commit all changes
             batch.commit().await()
             
-            println("Default data seeded successfully for user: $userId")
             Result.success(Unit)
         } catch (e: Exception) {
-            println("Error seeding default data for user $userId: ${e.message}")
             Result.failure(e)
         }
     }
